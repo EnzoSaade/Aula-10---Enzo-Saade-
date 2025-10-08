@@ -108,32 +108,4 @@ def generate_new_question():
     
     if score >= 6:
         op1 = random.choice(available_ops)
-        op2 = random.choice([op for op in available_ops if op != '/'])
-        
-        num1 = random.randint(10, limit)
-        num2 = random.randint(1, limit)
-        num3 = random.randint(1, int(limit / 10)) 
-        
-        try:
-            if op1 == '-':
-                if num1 < num2: num1, num2 = num2, num1
-                result_part_1 = ops[op1](num1, num2)
-            elif op1 == '/':
-                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0])
-                num2 = divisor
-                result_part_1 = int(ops[op1](num1, num2))
-            else: # '+' ou '*'
-                result_part_1 = ops[op1](num1, num2)
-
-            question_text = f"({num1} {op1} {num2}) {op2} {num3}"
-            
-            if op2 == '+':
-                answer = result_part_1 + num3
-            elif op2 == '-':
-                answer = result_part_1 - num3
-            else: # op2 == '*'
-                answer = result_part_1 * num3
-        except:
-            return generate_new_question() 
-
-        if abs(answer) > 100
+        op2 =
