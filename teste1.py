@@ -170,12 +170,22 @@ st.markdown("---")
 if not st.session_state.name:
     st.header("Modo de Dificuldade Extrema!")
     
-    # CORREÇÃO APLICADA AQUI: Nova URL de imagem de ícone estável
-    st.image(
-        "https://raw.githubusercontent.com/streamlit/streamlit/develop/docs/static/logo_math.png", 
-        caption="A matemática espera por você!", 
-        width=200
-    )
+    # NOVO BLOCO DE DECORAÇÃO (substitui a imagem)
+    st.markdown("""
+    <div style='
+        padding: 15px; 
+        border-radius: 10px; 
+        border: 2px solid #FF4B4B; /* Cor vermelha do Streamlit */
+        background-color: #f0f2f6; 
+        text-align: center;
+        margin-bottom: 20px;
+    '>
+        <h3 style='color: #FF4B4B; margin: 0;'>🧠 ULTIMATE CHALLENGE ATIVADO 🚀</h3>
+        <p style='margin: 5px 0 0 0;'>
+            Prepare-se para o teste final de **Ordem de Operações** e **Números Exponenciais**!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.form(key='name_form'):
         name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
@@ -194,6 +204,8 @@ if not st.session_state.name:
 # --- Lógica do Jogo ---
 
 elif st.session_state.game_started and st.session_state.score < 10:
+    # Jogo em andamento
+
     st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
     st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
     
