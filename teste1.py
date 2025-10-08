@@ -155,7 +155,7 @@ def generate_new_question():
         st.session_state.current_tip = get_random_quote()
         
         # REINICIA O TEMPORIZADOR A CADA NOVA QUESTÃO
-        st.session_state.time_remaining = st.session_state.time_limit
+        st.session_state.time_remaining = st.session_state.time_limit # CORRIGIDO AQUI
         st.session_state.question_start_time = time.time()
         
     except Exception:
@@ -171,5 +171,17 @@ def check_answer():
         
     # Garante que o tempo restante seja calculado antes da verificação
     elapsed_time = time.time() - st.session_state.question_start_time
-    st.session_state.time_remaining = st.session_state.
+    st.session_state.time_remaining = st.session_state.time_limit - math.floor(elapsed_time)
+
+    if st.session_state.time_remaining <= 0:
+        # Se o tempo acabou antes de submeter, trata como falha
+        st.session_state.last_attempt_correct = False
+        st.session_state.game_started = False 
+        return
+        
+    user_input = st.session_state.user_input
     
+    _, correct_answer = st.session_state.question
+
+    try:
+        user_answer_num = int(
