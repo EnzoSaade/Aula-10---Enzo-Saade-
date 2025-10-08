@@ -170,11 +170,9 @@ st.markdown("---")
 if not st.session_state.name:
     st.header("Modo de Dificuldade Extrema!")
     
-    # ----------------------------------------------------------------
-    # CORREÇÃO: Nova URL de imagem estável (Calculadora)
-    # ----------------------------------------------------------------
+    # CORREÇÃO APLICADA AQUI: Nova URL de imagem de ícone estável
     st.image(
-        "https://cdn.pixabay.com/photo/2013/07/12/17/23/calculator-152028_960_720.png", 
+        "https://raw.githubusercontent.com/streamlit/streamlit/develop/docs/static/logo_math.png", 
         caption="A matemática espera por você!", 
         width=200
     )
