@@ -95,11 +95,19 @@ if "messages" not in st.session_state:
 # --- Funções de Diálogo ---
 
 def get_dialogo_message(step):
-    """Retorna a pergunta ou encerramento do diálogo no passo atual."""
-    if step < len(DIALOGO):
-        return DIALOGO[step]["pergunta"]
-    else:
-        return f"Parabéns, {st.session_state.nome}! Sua dedicação aos fundamentos da nossa República é inquestionável. A celebração dos {ANIVERSARIO_ANOS} anos da Constituição de 1988 é um momento de reafirmar a nossa **Democracia** e a **Cidadania** plena. Obrigado por participar! **VIVA O BRASIL!**"
+    """Retorna a pergunta ou encerramento do diálogo no passo atual.
+    
+    Substitui {nome} pelo nome do usuário se ele já estiver definido na sessão."""
+    
+    message = DIALOGO[step]["pergunta"] if step < len(DIALOGO) else \
+              f"Parabéns, {st.session_state.nome}! Sua dedicação aos fundamentos da nossa República é inquestionável. A celebração dos {ANIVERSARIO_ANOS} anos da Constituição de 1988 é um momento de reafirmar a nossa **Democracia** e a **Cidadania** plena. Obrigado por participar! **VIVA O BRASIL!**"
+              
+    # Se o nome já foi coletado, substitui a placeholder {nome} na string.
+    if st.session_state.nome and "{nome}" in message:
+        message = message.format(nome=st.session_state.nome)
+        
+    return message
+
 
 def handle_user_input(user_prompt):
     """Processa a resposta do usuário e avança o diálogo."""
@@ -109,11 +117,13 @@ def handle_user_input(user_prompt):
         # Passo 0: Coleta o nome
         st.session_state.nome = user_prompt.strip().title()
         st.session_state.dialogo_step = 1
+        
+        # Chama get_dialogo_message(1) que agora fará a substituição do {nome}
         return get_dialogo_message(st.session_state.dialogo_step)
         
     elif current_step > 0 and current_step < len(DIALOGO):
         # Passos 1 a 3: Validação de respostas
-        # CORREÇÃO: Usar current_step diretamente, pois ele indica o índice da pergunta sendo respondida.
+        # current_step aponta para o índice da pergunta sendo respondida.
         estado_atual = DIALOGO[current_step]
         respostas_validas = estado_atual["resposta_correta"]
         
