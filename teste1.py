@@ -113,7 +113,9 @@ def generate_new_question():
 
     st.session_state.question = (question_text, answer)
     
-    st.rerun()
+    # ----------------------------------------------------------------
+    # REMOÇÃO DO st.rerun() DESNECESSÁRIO AQUI
+    # ----------------------------------------------------------------
 
 
 def check_answer():
@@ -140,8 +142,10 @@ def check_answer():
                 st.session_state.user_input = 0 
                 
                 time.sleep(0.5) 
-                generate_new_question()
+                generate_new_question() # Esta função gera a nova pergunta
+                
             else:
+                # Se for 10, o fluxo passa para a tela de vitória
                 pass 
             
         else:
@@ -157,7 +161,6 @@ def get_progress_bar(score):
     """Cria uma barra de progresso visual baseada na pontuação."""
     total_goals = 10
     
-    # Emojis para as metas
     if score >= 7:
         level_emoji = "🔥"
     elif score >= 4:
@@ -165,9 +168,7 @@ def get_progress_bar(score):
     else:
         level_emoji = "💡"
     
-    # Desenha os emojis de acerto (preenchidos)
     filled_emojis = "✅" * score
-    # Desenha os emojis de metas restantes (vazios)
     empty_emojis = "⬜" * (total_goals - score)
     
     st.markdown(f"**Progresso até o Título:** {level_emoji} {filled_emojis}{empty_emojis}")
@@ -187,9 +188,6 @@ st.set_page_config(
 st.title("DESAFIO DA MATEMÁTICA")
 
 # Área de Entrada do Nome do Usuário
-# ----------------------------------------------------------------
-# LINHA CORRIGIDA (Anteriormente: if not st.)
-# ----------------------------------------------------------------
 if not st.session_state.name:
     st.markdown("---")
     st.header("Modo de Dificuldade Extrema!")
@@ -267,7 +265,6 @@ elif st.session_state.game_started and st.session_state.score < 10:
 # --- Fim de Jogo (Vitória ou Derrota) ---
 
 elif st.session_state.score == 10:
-    # Vitória
     st.balloons()
     st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
     st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
@@ -276,7 +273,6 @@ elif st.session_state.score == 10:
         reset_game()
 
 elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    # Derrota
     st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
     st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
     st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
@@ -285,7 +281,6 @@ elif st.session_state.name and st.session_state.last_attempt_correct == False:
         reset_game()
 
 elif st.session_state.name and not st.session_state.game_started:
-    # Tela de espera após derrota (ou se iniciou e parou)
     st.markdown("---")
     st.markdown(f"### Olá, **{st.session_state.name}**!")
     st.info("Clique abaixo para começar a provar seu valor.")
