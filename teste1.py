@@ -52,8 +52,8 @@ def generate_new_question():
     if st.session_state.level_max_value > 1000:
         st.session_state.level_max_value = 1000
     
-    # Força um re-run para exibir a nova questão imediatamente, se necessário
-    st.experimental_rerun()
+    # FORÇANDO O RE-RUN: CORREÇÃO APLICADA AQUI
+    st.rerun()
 
 
 def check_answer():
@@ -152,10 +152,6 @@ elif st.session_state.game_started and st.session_state.score < 10:
             )
             submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
             
-            # Se a resposta foi enviada, o `on_click` já cuidou da lógica, 
-            # mas o Streamlit pode rodar o script novamente. 
-            # Evitamos colocar a lógica principal aqui para não ter repetição.
-
 
 # --- Fim de Jogo (Vitória ou Derrota) ---
 
