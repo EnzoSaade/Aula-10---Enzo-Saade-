@@ -110,7 +110,7 @@ def generate_new_question():
                 result_part_1 = ops[op1](num1, num2)
             elif op1 == '/':
                 # Garante que num1 seja divisível por um divisor razoável
-                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0] or [2]) # Se não achar divisor, usa 2
+                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0] or [2])
                 num2 = divisor
                 result_part_1 = int(ops[op1](num1, num2))
             else: # '+' ou '*'
@@ -159,4 +159,17 @@ def generate_new_question():
         st.session_state.question_start_time = time.time()
         
     except Exception:
-        # Se ocorrer qualquer erro (divisão por
+        # Se ocorrer qualquer erro, tente novamente
+        return generate_new_question()
+
+
+def check_answer():
+    """Verifica a resposta do usuário. Chamada pelo botão de submissão."""
+    
+    if st.session_state.question is None: 
+        return
+        
+    # Garante que o tempo restante seja calculado antes da verificação
+    elapsed_time = time.time() - st.session_state.question_start_time
+    st.session_state.time_remaining = st.session_state.
+    
