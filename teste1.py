@@ -12,7 +12,7 @@ ops = {
     '/': operator.truediv,
 }
 
-# --- Lista de Frases de Matemáticos Históricos ---
+# --- Lista de Frases de Matemáticos Históricos (AGORA COM MAIS OPÇÕES) ---
 HISTORICAL_MATH_QUOTES = [
     "“A Matemática é o alfabeto com o qual Deus escreveu o universo.” — Galileu Galilei",
     "“Onde há matéria, há geometria.” — Johannes Kepler",
@@ -22,13 +22,39 @@ HISTORICAL_MATH_QUOTES = [
     "“A Matemática é a rainha das ciências e a Aritmética é a rainha da Matemática.” — Carl Friedrich Gauss",
     "“Na Matemática não há caminhos reais.” — Euclides",
     "“A imaginação é mais importante que o conhecimento.” — Albert Einstein",
+    "“Deus fez os números inteiros, todo o resto é obra do homem.” — Leopold Kronecker",
+    "“Existe geometria em todo o resplendor. Existe música em todas as esferas.” — Pitágoras",
+    "“Sem a paixão, não há gênio.” — Theodor Svedberg",
+    "“A ciência mais digna de ser estudada é a Matemática.” — Roger Bacon",
+    "“Se soubesse que o mundo acabaria amanhã, eu, hoje, plantaria uma macieira.” — Martinho Lutero (Citação popularmente associada ao conceito de certeza e esperança na ciência)",
+    "“Tudo é número.” — Pitágoras",
+    "“A ciência começa na Matemática.” — James Clerk Maxwell",
 ]
 
 # --- Funções de Ajuda e Variáveis de Estado ---
 
 def get_random_quote():
-    """Retorna uma citação aleatória da lista."""
-    return random.choice(HISTORICAL_MATH_QUOTES)
+    """Retorna uma citação aleatória, evitando repetição da última usada."""
+    
+    # 1. Obtém o índice da última citação usada
+    last_index = st.session_state.get('last_quote_index', -1)
+    
+    # 2. Cria uma lista de índices que podem ser escolhidos (todos, exceto o último)
+    available_indices = [i for i in range(len(HISTORICAL_MATH_QUOTES)) if i != last_index]
+    
+    # 3. Se houver índices disponíveis, escolhe um novo
+    if available_indices:
+        new_index = random.choice(available_indices)
+    else:
+        # Se for a primeira vez ou se só houver uma citação, escolhe qualquer uma
+        new_index = random.randint(0, len(HISTORICAL_MATH_QUOTES) - 1)
+    
+    # 4. Salva o novo índice no estado da sessão
+    st.session_state.last_quote_index = new_index
+    
+    # 5. Retorna a citação correspondente
+    return HISTORICAL_MATH_QUOTES[new_index]
+
 
 def init_session_state():
     """Inicializa as variáveis de estado da sessão."""
@@ -46,6 +72,9 @@ def init_session_state():
         st.session_state.level_max_value = 10 
     if 'user_input' not in st.session_state:
         st.session_state.user_input = 0
+    # Nova variável para rastrear a última citação
+    if 'last_quote_index' not in st.session_state:
+        st.session_state.last_quote_index = -1
     
     if 'current_tip' not in st.session_state:
         st.session_state.current_tip = get_random_quote()
@@ -56,7 +85,7 @@ def reset_game():
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
-    st.session_state.current_tip = get_random_quote()
+    st.session_state.current_tip = get_random_quote() # Novo quote
     generate_new_question()
 
 def generate_new_question():
@@ -209,7 +238,7 @@ st.markdown("---")
 if not st.session_state.name:
     st.header("Modo de Dificuldade Extrema!")
     
-    # Banner Principal com Gradiente e Cores Fortes (CORRIGIDO)
+    # Banner Principal com Gradiente e Cores Fortes
     st.markdown("""
     <div style='
         padding: 20px; 
@@ -225,7 +254,7 @@ if not st.session_state.name:
             Prove ser o Mestre da Ordem de Operações.
         </p>
     </div>
-    """, unsafe_allow_html=True) # <-- As aspas triplas de fechamento estavam faltando/mal posicionadas.
+    """, unsafe_allow_html=True) 
 
     with st.form(key='name_form'):
         name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
@@ -261,73 +290,4 @@ elif st.session_state.game_started and st.session_state.score < 10:
     st.markdown("---")
     st.markdown("<h4 style='text-align: center; color: #DC143C;'>🎯 O Desafio da Vez é...</h4>", unsafe_allow_html=True)
     
-    if st.session_state.question:
-        question_text, _ = st.session_state.question
-        
-        # Pergunta em Destaque (Fundo)
-        st.markdown(f"""
-        <div style='
-            background-color: #FFFACD; 
-            padding: 25px; 
-            border-radius: 10px; 
-            text-align: center; 
-            border: 3px dashed #FFD700;
-        '>
-            <h1 style='margin: 0;'>**{question_text}** = ?</h1>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        with st.form(key='quiz_form'):
-            answer_input = st.number_input(
-                "Sua Resposta (Inteiro):", 
-                min_value=-99999999, 
-                step=1, 
-                key="user_input", 
-                value=st.session_state.user_input, 
-                help="Digite sua resposta e clique em 'Enviar'."
-            )
-            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
-            
-    # Mensagem de Citação Histórica Colorida
-    st.markdown("---")
-    st.markdown(f"""
-    <div style='
-        padding: 10px; 
-        border-radius: 8px; 
-        background-color: #F0F8FF; 
-        color: #4682B4; 
-        font-weight: bold;
-        text-align: center;
-        font-style: italic;
-    '>
-        📜 CITAÇÃO: {st.session_state.current_tip}
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- Fim de Jogo (Vitória ou Derrota) ---
-
-elif st.session_state.score == 10:
-    st.balloons()
-    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
-    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
-    st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
-    st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and not st.session_state.game_started:
-    st.markdown("---")
-    st.markdown(f"### Olá, **{st.session_state.name}**!")
-    st.info("Clique abaixo para começar a provar seu valor.")
-    if st.button("Iniciar Desafio da Matemática"):
-        st.session_state.game_started = True
-        reset_game()
+    if
