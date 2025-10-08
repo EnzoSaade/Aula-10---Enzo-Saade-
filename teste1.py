@@ -32,11 +32,12 @@ def init_session_state():
         st.session_state.user_input = 0
 
 def reset_game():
-    """Reinicia a pontuação e a dificuldade do jogo."""
+    """Reinicia a pontuação e a dificuldade do jogo, e gera a primeira questão."""
     st.session_state.score = 0
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
+    # Chama generate_new_question() para garantir que uma questão válida exista
     generate_new_question()
 
 def generate_new_question():
@@ -189,13 +190,17 @@ if not st.session_state.name:
             st.session_state.name = name_input.title().strip()
             st.session_state.game_started = True
             st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de Operações?")
-            generate_new_question()
+            
+            # ----------------------------------------------------------------
+            # CORREÇÃO APLICADA AQUI
+            # ----------------------------------------------------------------
+            reset_game() 
+            
         elif submit_button and not name_input:
             st.warning("Por favor, digite seu nome para começar.")
 
 # --- Lógica do Jogo ---
 
-# LINHA CORRIGIDA (com o ':')
 elif st.session_state.game_started and st.session_state.score < 10:
     # Jogo em andamento
 
@@ -203,3 +208,55 @@ elif st.session_state.game_started and st.session_state.score < 10:
     st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
     
     # Exibe a pontuação e o nível de dificuldade
+    col1, col2 = st.columns(2)
+    col1.metric("Pontuação Atual", st.session_state.score)
+    col2.metric("Dificuldade (Máx. Valor)", min(st.session_state.level_max_value, 10000))
+    
+    st.markdown("---")
+    
+    # Exibe a Pergunta
+    if st.session_state.question:
+        question_text, _ = st.session_state.question
+        st.header(f"Questão {st.session_state.score + 1}:")
+        st.markdown(f"## **{question_text}** = ?")
+        
+        # Formulário para a resposta
+        with st.form(key='quiz_form'):
+            answer_input = st.number_input(
+                "Sua Resposta (Inteiro):", 
+                min_value=-99999999, 
+                step=1, 
+                key="user_input", 
+                value=st.session_state.user_input, 
+                help="Digite sua resposta e clique em 'Enviar'."
+            )
+            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
+            
+
+# --- Fim de Jogo (Vitória ou Derrota) ---
+
+elif st.session_state.score == 10:
+    # Vitória
+    st.balloons()
+    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
+    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
+    
+    if st.button("Tentar Novamente (Recomeçar)"):
+        reset_game()
+
+elif st.session_state.name and st.session_state.last_attempt_correct == False:
+    # Derrota
+    st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
+    st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
+    st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
+    
+    if st.button("Tentar Novamente (Recomeçar)"):
+        reset_game()
+
+elif st.session_state.name and not st.session_state.game_started:
+    # Tela de espera
+    st.markdown(f"### Olá, **{st.session_state.name}**!")
+    st.info("Clique abaixo para começar a provar seu valor.")
+    if st.button("Iniciar Desafio da Matemática"):
+        st.session_state.game_started = True
+        reset_game()
