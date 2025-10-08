@@ -37,7 +37,6 @@ def reset_game():
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
-    # Chama generate_new_question() para garantir que uma questão válida exista
     generate_new_question()
 
 def generate_new_question():
@@ -45,13 +44,11 @@ def generate_new_question():
     
     score = st.session_state.score
     
-    # Aumento EXTREMO da Dificuldade (base 4.0!)
     st.session_state.level_max_value = int(10 * (4.0 ** score))
     
     max_val = st.session_state.level_max_value
     limit = min(max_val, 10000)
     
-    # Define as operações disponíveis
     available_ops = ['+', '+'] 
     if score >= 3:
         available_ops.append('-') 
@@ -61,7 +58,6 @@ def generate_new_question():
         available_ops.append('/') 
     
     
-    # Lógica para a questão de 3 termos com PARÊNTESES (Ultimate Test)
     if score >= 6:
         op1 = random.choice(available_ops)
         op2 = random.choice([op for op in available_ops if op != '/'])
@@ -70,7 +66,6 @@ def generate_new_question():
         num2 = random.randint(1, limit)
         num3 = random.randint(1, int(limit / 10)) 
         
-        # Garante que (num1 op1 num2) seja um resultado limpo e positivo
         if op1 == '-':
             if num1 < num2: num1, num2 = num2, num1
             result_part_1 = ops[op1](num1, num2)
@@ -83,10 +78,8 @@ def generate_new_question():
         else: # '+' ou '*'
             result_part_1 = ops[op1](num1, num2)
 
-        # Monta a questão com parênteses, forçando a ordem
         question_text = f"({num1} {op1} {num2}) {op2} {num3}"
         
-        # Calcula o resultado final
         if op2 == '+':
             answer = result_part_1 + num3
         elif op2 == '-':
@@ -98,7 +91,6 @@ def generate_new_question():
             return generate_new_question() 
             
     else:
-        # Lógica de duas variáveis (Níveis 1-5)
         op1 = random.choice(available_ops)
         
         num1 = random.randint(1, limit)
@@ -140,13 +132,11 @@ def check_answer():
             st.session_state.score += 1
             st.session_state.last_attempt_correct = True
             
-            # EFEITOS ESPECIAIS: APENAS BALÕES
             st.balloons()
             
             if st.session_state.score < 10:
                 st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
                 
-                # CORREÇÃO DA LIMPEZA: Define o valor da CHAVE de volta para 0
                 st.session_state.user_input = 0 
                 
                 time.sleep(0.5) 
@@ -167,14 +157,12 @@ def check_answer():
 
 init_session_state()
 
-# TÍTULO FINAL AJUSTADO
 st.set_page_config(
     page_title="DESAFIO DA MATEMÁTICA",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# TÍTULO FINAL AJUSTADO
 st.title("DESAFIO DA MATEMÁTICA")
 st.markdown("---")
 
@@ -182,6 +170,13 @@ st.markdown("---")
 if not st.session_state.name:
     st.header("Modo de Dificuldade Extrema!")
     
+    # ADIÇÃO DA IMAGEM USANDO URL
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Pythagorean_theorem_formula_2.svg/300px-Pythagorean_theorem_formula_2.svg.png", 
+        caption="A matemática espera por você!", 
+        width=200
+    )
+
     with st.form(key='name_form'):
         name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
         submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
@@ -191,9 +186,6 @@ if not st.session_state.name:
             st.session_state.game_started = True
             st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de Operações?")
             
-            # ----------------------------------------------------------------
-            # CORREÇÃO APLICADA AQUI
-            # ----------------------------------------------------------------
             reset_game() 
             
         elif submit_button and not name_input:
@@ -207,20 +199,17 @@ elif st.session_state.game_started and st.session_state.score < 10:
     st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
     st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
     
-    # Exibe a pontuação e o nível de dificuldade
     col1, col2 = st.columns(2)
     col1.metric("Pontuação Atual", st.session_state.score)
     col2.metric("Dificuldade (Máx. Valor)", min(st.session_state.level_max_value, 10000))
     
     st.markdown("---")
     
-    # Exibe a Pergunta
     if st.session_state.question:
         question_text, _ = st.session_state.question
         st.header(f"Questão {st.session_state.score + 1}:")
         st.markdown(f"## **{question_text}** = ?")
         
-        # Formulário para a resposta
         with st.form(key='quiz_form'):
             answer_input = st.number_input(
                 "Sua Resposta (Inteiro):", 
