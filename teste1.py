@@ -12,6 +12,17 @@ ops = {
     '/': operator.truediv,
 }
 
+# --- Lista de Frases de Dicas/Motivação (Nova Adição) ---
+MOTIVATIONAL_TIPS = [
+    "Dica: Multiplicação e Divisão vêm antes de Soma e Subtração! 📐",
+    "Não confie na calculadora! Confie no seu cérebro. 🧠",
+    "Lembre-se: Tudo dentro dos parênteses tem prioridade máxima. 😉",
+    "A Dificuldade é Exponencial! Foco total nos números grandes. 🚀",
+    "Matemática é paciência. Não tenha pressa! ⏳",
+    "Um pequeno erro faz toda a diferença. Revise seu cálculo. ✔️",
+    "Se você chegou até aqui, você já é um gênio! Prossiga. ✨",
+]
+
 # --- Funções de Ajuda e Variáveis de Estado ---
 
 def init_session_state():
@@ -30,6 +41,9 @@ def init_session_state():
         st.session_state.level_max_value = 10 
     if 'user_input' not in st.session_state:
         st.session_state.user_input = 0
+    # Novo estado para armazenar a dica atual
+    if 'current_tip' not in st.session_state:
+        st.session_state.current_tip = random.choice(MOTIVATIONAL_TIPS)
 
 def reset_game():
     """Reinicia a pontuação e a dificuldade do jogo, e gera a primeira questão."""
@@ -37,6 +51,8 @@ def reset_game():
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
+    # Gera a primeira questão e uma nova dica
+    st.session_state.current_tip = random.choice(MOTIVATIONAL_TIPS)
     generate_new_question()
 
 def generate_new_question():
@@ -113,9 +129,8 @@ def generate_new_question():
 
     st.session_state.question = (question_text, answer)
     
-    # ----------------------------------------------------------------
-    # REMOÇÃO DO st.rerun() DESNECESSÁRIO AQUI
-    # ----------------------------------------------------------------
+    # NOVO: Sorteia uma nova dica para a próxima tela
+    st.session_state.current_tip = random.choice(MOTIVATIONAL_TIPS)
 
 
 def check_answer():
@@ -142,10 +157,9 @@ def check_answer():
                 st.session_state.user_input = 0 
                 
                 time.sleep(0.5) 
-                generate_new_question() # Esta função gera a nova pergunta
+                generate_new_question() # Esta função gera a nova pergunta e a nova dica
                 
             else:
-                # Se for 10, o fluxo passa para a tela de vitória
                 pass 
             
         else:
@@ -261,6 +275,10 @@ elif st.session_state.game_started and st.session_state.score < 10:
             )
             submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
             
+    # --- NOVO: Mensagem de Dica Aleatória na Parte de Baixo ---
+    st.markdown("---")
+    st.caption(f"**Dica Secreta:** {st.session_state.current_tip}")
+    # -----------------------------------------------------------
 
 # --- Fim de Jogo (Vitória ou Derrota) ---
 
@@ -287,3 +305,4 @@ elif st.session_state.name and not st.session_state.game_started:
     if st.button("Iniciar Desafio da Matemática"):
         st.session_state.game_started = True
         reset_game()
+    
