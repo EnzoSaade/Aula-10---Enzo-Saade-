@@ -1,14 +1,15 @@
 import streamlit as st
 import random
 import operator
-import math # Para a função sqrt (raiz quadrada)
+import math 
+import time # Importar time para um pequeno atraso visual
 
 # Mapeamento de operadores para facilitar o cálculo
 ops = {
     '+': operator.add,
     '-': operator.sub,
     '*': operator.mul,
-    '/': operator.truediv, # Usaremos division, mas garantiremos que o resultado seja inteiro
+    '/': operator.truediv,
 }
 
 # --- Funções de Ajuda e Variáveis de Estado ---
@@ -26,14 +27,17 @@ def init_session_state():
     if 'question' not in st.session_state:
         st.session_state.question = None
     if 'level_max_value' not in st.session_state:
-        # Valor inicial para a dificuldade (começa fácil)
         st.session_state.level_max_value = 10 
+    # NOVO: Variável para controlar o valor inicial do campo de resposta
+    if 'answer_input_value' not in st.session_state:
+        st.session_state.answer_input_value = 0 
 
 def reset_game():
     """Reinicia a pontuação e a dificuldade do jogo."""
     st.session_state.score = 0
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
+    st.session_state.answer_input_value = 0 # Limpa o campo na reinicialização
     generate_new_question()
 
 def generate_new_question():
@@ -46,62 +50,50 @@ def generate_new_question():
     
     max_val = st.session_state.level_max_value
     
-    # Define os limites para os números: mínimo 1, máximo 5000 (muito maior)
+    # Define os limites para os números: mínimo 1, máximo 5000 
     limit = min(max_val, 5000)
     
     # Define as operações disponíveis
-    available_ops = ['+', '+'] # Adição é mais comum no início
+    available_ops = ['+', '+'] 
     if score >= 3:
-        available_ops.append('-') # Subtração
+        available_ops.append('-') 
     if score >= 5:
-        available_ops.append('*') # Multiplicação
+        available_ops.append('*') 
     if score >= 7:
-        available_ops.append('/') # Divisão
+        available_ops.append('/') 
     
     
     # Lógica para a questão de 3 termos (Ordem de Operações)
     if score >= 7:
         op1 = random.choice(available_ops)
-        op2 = random.choice([op for op in available_ops if op != '/']) # Evita Divisão dupla complexa
+        op2 = random.choice([op for op in available_ops if op != '/']) 
         
-        # Gera os números iniciais
         num1 = random.randint(10, limit)
         num2 = random.randint(1, limit)
-        num3 = random.randint(1, int(limit / 10)) # Terceiro número menor
+        num3 = random.randint(1, int(limit / 10)) 
         
-        # Se op1 ou op2 for '-', garante que o resultado não seja negativo na subtração
         if op1 == '-' and num1 < num2:
              num1, num2 = num2, num1
         
-        # Lógica especial para garantir Divisão com resultado INTEIRO
         if '/' in [op1, op2]:
-            # Simplificação: se houver divisão, garantimos que o divisor é um fator
             divisor = random.choice([n for n in range(2, 11) if limit % n == 0])
             
             if op1 == '/':
-                # num1 será um múltiplo do divisor
                 num2 = divisor 
                 num1 = random.randint(1, int(limit / divisor)) * divisor
             elif op2 == '/':
-                 # num2 será um múltiplo do divisor, num3 será o divisor
                 num3 = divisor
                 num2 = random.randint(1, int(limit / divisor)) * divisor
 
         question_text = f"{num1} {op1} {num2} {op2} {num3}"
         
-        # O cálculo deve respeitar a ordem (PEMDAS/BODMAS)
         try:
-            # Usando eval() com cautela para calcular a expressão, pois é a forma mais simples 
-            # de aplicar a ordem de operações (Multiplicação/Divisão primeiro).
-            # Como controlamos a entrada dos números e operadores, o risco é mínimo.
             answer = int(eval(question_text))
             
-            # Filtro de segurança para evitar números absurdos
             if abs(answer) > 1000000:
-                return generate_new_question() # Tenta gerar uma questão mais simples
+                return generate_new_question() 
             
         except ZeroDivisionError:
-            # Em caso de divisão por zero (muito improvável, mas segurança), gera nova questão
             return generate_new_question()
             
     else:
@@ -112,12 +104,10 @@ def generate_new_question():
         num2 = random.randint(1, limit)
         
         if op1 == '-':
-            # Garante resultado não negativo para subtração simples
             if num1 < num2: num1, num2 = num2, num1
             answer = ops[op1](num1, num2)
             
         elif op1 == '/':
-            # Garante Divisão com resultado INTEIRO
             divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if limit % n == 0])
             num2 = divisor
             num1 = random.randint(1, int(limit / divisor)) * divisor
@@ -130,12 +120,16 @@ def generate_new_question():
 
     st.session_state.question = (question_text, answer)
     
-    # Forçando o re-run: CORREÇÃO DEVIDA AO ERRO
+    # IMPORTANTE: AQUI GARANTIMOS QUE O CAMPO DE RESPOSTA FIQUE LIMPO (valor = 0)
+    st.session_state.answer_input_value = 0 
+    
+    # Forçando o re-run
     st.rerun()
 
 
 def check_answer():
     """Verifica a resposta do usuário."""
+    # O valor digitado pelo usuário é lido diretamente do session state pela key 'user_input'
     user_input = st.session_state.user_input
     
     if st.session_state.question is None:
@@ -152,9 +146,13 @@ def check_answer():
             
             if st.session_state.score < 10:
                 st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
+                # Atualiza o valor do campo de input para 0 ANTES de chamar generate_new_question
+                st.session_state.answer_input_value = 0 
+                # Um pequeno atraso para o usuário ver a mensagem de sucesso antes do re-run
+                time.sleep(0.5) 
                 generate_new_question()
             else:
-                # O jogo termina com 10 acertos
+                # Vitória: não precisa gerar nova questão
                 pass 
             
         else:
@@ -206,7 +204,6 @@ elif st.session_state.game_started and st.session_state.score < 10:
     # Exibe a pontuação e o nível de dificuldade
     col1, col2 = st.columns(2)
     col1.metric("Pontuação Atual", st.session_state.score)
-    # Exibe o limite máximo do número na questão
     col2.metric("Nível de Dificuldade (Máx. Valor)", min(st.session_state.level_max_value, 5000))
     
     st.markdown("---")
@@ -219,11 +216,14 @@ elif st.session_state.game_started and st.session_state.score < 10:
         
         # Formulário para a resposta
         with st.form(key='quiz_form'):
+            # AQUI ESTÁ A CORREÇÃO PRINCIPAL: 
+            # O parâmetro 'value' é controlado por st.session_state.answer_input_value
             answer_input = st.number_input(
                 "Sua Resposta (Inteiro):", 
                 min_value=-9999999, 
                 step=1, 
-                key="user_input", 
+                key="user_input",
+                value=st.session_state.answer_input_value, # Controla o valor exibido
                 help="Digite sua resposta e clique em 'Enviar'."
             )
             submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
