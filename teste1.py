@@ -170,9 +170,11 @@ st.markdown("---")
 if not st.session_state.name:
     st.header("Modo de Dificuldade Extrema!")
     
-    # ADIÇÃO DA IMAGEM USANDO URL
+    # ----------------------------------------------------------------
+    # CORREÇÃO: Nova URL de imagem estável (Calculadora)
+    # ----------------------------------------------------------------
     st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Pythagorean_theorem_formula_2.svg/300px-Pythagorean_theorem_formula_2.svg.png", 
+        "https://cdn.pixabay.com/photo/2013/07/12/17/23/calculator-152028_960_720.png", 
         caption="A matemática espera por você!", 
         width=200
     )
@@ -194,8 +196,6 @@ if not st.session_state.name:
 # --- Lógica do Jogo ---
 
 elif st.session_state.game_started and st.session_state.score < 10:
-    # Jogo em andamento
-
     st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
     st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
     
@@ -225,7 +225,6 @@ elif st.session_state.game_started and st.session_state.score < 10:
 # --- Fim de Jogo (Vitória ou Derrota) ---
 
 elif st.session_state.score == 10:
-    # Vitória
     st.balloons()
     st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
     st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
@@ -234,7 +233,6 @@ elif st.session_state.score == 10:
         reset_game()
 
 elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    # Derrota
     st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
     st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
     st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
@@ -243,7 +241,6 @@ elif st.session_state.name and st.session_state.last_attempt_correct == False:
         reset_game()
 
 elif st.session_state.name and not st.session_state.game_started:
-    # Tela de espera
     st.markdown(f"### Olá, **{st.session_state.name}**!")
     st.info("Clique abaixo para começar a provar seu valor.")
     if st.button("Iniciar Desafio da Matemática"):
