@@ -12,7 +12,7 @@ ops = {
     '/': operator.truediv,
 }
 
-# --- Lista de Frases de Matemáticos Históricos (Novo Conteúdo) ---
+# --- Lista de Frases de Matemáticos Históricos ---
 HISTORICAL_MATH_QUOTES = [
     "“A Matemática é o alfabeto com o qual Deus escreveu o universo.” — Galileu Galilei",
     "“Onde há matéria, há geometria.” — Johannes Kepler",
@@ -26,8 +26,13 @@ HISTORICAL_MATH_QUOTES = [
 
 # --- Funções de Ajuda e Variáveis de Estado ---
 
+def get_random_quote():
+    """Retorna uma citação aleatória da lista."""
+    return random.choice(HISTORICAL_MATH_QUOTES)
+
 def init_session_state():
     """Inicializa as variáveis de estado da sessão."""
+    # Garante que todas as chaves essenciais existam
     if 'name' not in st.session_state:
         st.session_state.name = ""
     if 'score' not in st.session_state:
@@ -42,9 +47,10 @@ def init_session_state():
         st.session_state.level_max_value = 10 
     if 'user_input' not in st.session_state:
         st.session_state.user_input = 0
-    # Atualizado para usar a nova lista
+    
+    # Inicializa a citação (Só executa uma vez na inicialização completa)
     if 'current_tip' not in st.session_state:
-        st.session_state.current_tip = random.choice(HISTORICAL_MATH_QUOTES)
+        st.session_state.current_tip = get_random_quote()
 
 def reset_game():
     """Reinicia a pontuação e a dificuldade do jogo, e gera a primeira questão."""
@@ -52,8 +58,7 @@ def reset_game():
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
-    # Atualizado para usar a nova lista
-    st.session_state.current_tip = random.choice(HISTORICAL_MATH_QUOTES)
+    st.session_state.current_tip = get_random_quote() # Novo quote
     generate_new_question()
 
 def generate_new_question():
@@ -130,4 +135,88 @@ def generate_new_question():
 
     st.session_state.question = (question_text, answer)
     
-    #
+    st.session_state.current_tip = get_random_quote()
+
+
+def check_answer():
+    """Verifica a resposta do usuário."""
+    user_input = st.session_state.user_input
+    
+    if st.session_state.question is None:
+        return
+
+    _, correct_answer = st.session_state.question
+
+    try:
+        user_answer_num = int(user_input)
+        
+        if user_answer_num == correct_answer:
+            st.session_state.score += 1
+            st.session_state.last_attempt_correct = True
+            
+            st.balloons()
+            
+            if st.session_state.score < 10:
+                st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
+                
+                st.session_state.user_input = 0 
+                
+                time.sleep(0.5) 
+                generate_new_question()
+            else:
+                pass 
+            
+        else:
+            st.error(f"Resposta incorreta, {st.session_state.name} 😔. A resposta correta era **{correct_answer}**.")
+            st.session_state.last_attempt_correct = False
+            st.session_state.game_started = False 
+            
+    except ValueError:
+        st.warning("Por favor, digite apenas um número inteiro.")
+
+
+def get_progress_bar(score):
+    """Cria uma barra de progresso visual baseada na pontuação."""
+    total_goals = 10
+    
+    if score >= 7:
+        level_emoji = "🔥"
+    elif score >= 4:
+        level_emoji = "🧠"
+    else:
+        level_emoji = "💡"
+    
+    filled_emojis = "✅" * score
+    empty_emojis = "⬜" * (total_goals - score)
+    
+    st.markdown(f"**Progresso até o Título:** {level_emoji} {filled_emojis}{empty_emojis}")
+    st.progress(score / total_goals)
+
+
+# --- Layout do Aplicativo Streamlit ---
+
+# ----------------------------------------------------------------
+# CHAVE: Garante que o estado seja inicializado antes de qualquer widget ou lógica principal
+init_session_state()
+# ----------------------------------------------------------------
+
+st.set_page_config(
+    page_title="DESAFIO DA MATEMÁTICA",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# Título Colorido
+st.markdown("<h1 style='text-align: center; color: #1E90FF; text-shadow: 2px 2px 4px #87CEEB;'>DESAFIO DA MATEMÁTICA</h1>", unsafe_allow_html=True)
+st.markdown("---")
+
+# Área de Entrada do Nome do Usuário
+if not st.session_state.name:
+    st.header("Modo de Dificuldade Extrema!")
+    
+    # Banner Principal com Gradiente e Cores Fortes
+    st.markdown("""
+    <div style='
+        padding: 20px; 
+        border-radius: 12px; 
+        background: linear-
