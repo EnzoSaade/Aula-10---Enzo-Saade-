@@ -28,7 +28,6 @@ def init_session_state():
         st.session_state.question = None
     if 'level_max_value' not in st.session_state:
         st.session_state.level_max_value = 10 
-    # NOVO: A chave do input é usada para controlar o valor inicial (limpeza)
     if 'user_input' not in st.session_state:
         st.session_state.user_input = 0
 
@@ -37,7 +36,7 @@ def reset_game():
     st.session_state.score = 0
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
-    st.session_state.user_input = 0 # Limpa o campo na reinicialização
+    st.session_state.user_input = 0 
     generate_new_question()
 
 def generate_new_question():
@@ -45,12 +44,10 @@ def generate_new_question():
     
     score = st.session_state.score
     
-    # 1. Aumento EXTREMO da Dificuldade (base 4.0!)
+    # Aumento EXTREMO da Dificuldade (base 4.0!)
     st.session_state.level_max_value = int(10 * (4.0 ** score))
     
     max_val = st.session_state.level_max_value
-    
-    # Define os limites para os números: mínimo 1, máximo 10000 
     limit = min(max_val, 10000)
     
     # Define as operações disponíveis
@@ -68,18 +65,16 @@ def generate_new_question():
         op1 = random.choice(available_ops)
         op2 = random.choice([op for op in available_ops if op != '/'])
         
-        # Gera os números
         num1 = random.randint(10, limit)
         num2 = random.randint(1, limit)
         num3 = random.randint(1, int(limit / 10)) 
         
-        # 1. Garante que (num1 op1 num2) seja um resultado limpo e positivo (para simplificar)
+        # Garante que (num1 op1 num2) seja um resultado limpo e positivo
         if op1 == '-':
             if num1 < num2: num1, num2 = num2, num1
             result_part_1 = ops[op1](num1, num2)
             
         elif op1 == '/':
-            # Garante Divisão com resultado INTEIRO e positivo
             divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0])
             num2 = divisor
             result_part_1 = int(ops[op1](num1, num2))
@@ -87,10 +82,10 @@ def generate_new_question():
         else: # '+' ou '*'
             result_part_1 = ops[op1](num1, num2)
 
-        # 2. Monta a questão com parênteses, forçando a ordem
+        # Monta a questão com parênteses, forçando a ordem
         question_text = f"({num1} {op1} {num2}) {op2} {num3}"
         
-        # 3. Calcula o resultado final (o eval garante o cálculo de fora dos parênteses)
+        # Calcula o resultado final
         if op2 == '+':
             answer = result_part_1 + num3
         elif op2 == '-':
@@ -98,12 +93,11 @@ def generate_new_question():
         else: # op2 == '*'
             answer = result_part_1 * num3
             
-        # Filtro de segurança
         if abs(answer) > 1000000:
             return generate_new_question() 
             
     else:
-        # Lógica de duas variáveis (Níveis 1-5) - Já é bem difícil por causa do fator 4.0x
+        # Lógica de duas variáveis (Níveis 1-5)
         op1 = random.choice(available_ops)
         
         num1 = random.randint(1, limit)
@@ -126,13 +120,11 @@ def generate_new_question():
 
     st.session_state.question = (question_text, answer)
     
-    # Forçando o re-run
     st.rerun()
 
 
 def check_answer():
     """Verifica a resposta do usuário."""
-    # O valor digitado pelo usuário é lido de st.session_state.user_input
     user_input = st.session_state.user_input
     
     if st.session_state.question is None:
@@ -147,15 +139,13 @@ def check_answer():
             st.session_state.score += 1
             st.session_state.last_attempt_correct = True
             
-            # EFEITOS ESPECIAIS AO ACERTAR
+            # EFEITOS ESPECIAIS AO ACERTAR: APENAS BALÕES
             st.balloons()
-            st.snow()
             
             if st.session_state.score < 10:
                 st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
                 
                 # CORREÇÃO DA LIMPEZA: Define o valor da CHAVE de volta para 0
-                # O st.rerun() redesenhará o campo com este valor.
                 st.session_state.user_input = 0 
                 
                 time.sleep(0.5) 
@@ -176,15 +166,15 @@ def check_answer():
 
 init_session_state()
 
-# TÍTULO SIMPLES
+# TÍTULO FINAL AJUSTADO
 st.set_page_config(
-    page_title="desafio da matemática",
+    page_title="DESAFIO DA MATEMÁTICA",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# TÍTULO SIMPLES
-st.title("desafio da matemática")
+# TÍTULO FINAL AJUSTADO
+st.title("DESAFIO DA MATEMÁTICA")
 st.markdown("---")
 
 # Área de Entrada do Nome do Usuário
@@ -193,7 +183,7 @@ if not st.session_state.name:
     
     with st.form(key='name_form'):
         name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
-        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE V2")
+        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
         
         if submit_button and name_input:
             st.session_state.name = name_input.title().strip()
@@ -205,64 +195,4 @@ if not st.session_state.name:
 
 # --- Lógica do Jogo ---
 
-elif st.session_state.game_started and st.session_state.score < 10:
-    # Jogo em andamento
-
-    st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
-    st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
-    
-    # Exibe a pontuação e o nível de dificuldade
-    col1, col2 = st.columns(2)
-    col1.metric("Pontuação Atual", st.session_state.score)
-    col2.metric("Dificuldade (Máx. Valor)", min(st.session_state.level_max_value, 10000))
-    
-    st.markdown("---")
-    
-    # Exibe a Pergunta
-    if st.session_state.question:
-        question_text, _ = st.session_state.question
-        st.header(f"Questão {st.session_state.score + 1}:")
-        st.markdown(f"## **{question_text}** = ?")
-        
-        # Formulário para a resposta
-        with st.form(key='quiz_form'):
-            # CORREÇÃO DA LIMPEZA APLICADA AQUI
-            answer_input = st.number_input(
-                "Sua Resposta (Inteiro):", 
-                min_value=-99999999, 
-                step=1, 
-                key="user_input", # A chave armazena o valor submetido
-                value=st.session_state.user_input, # O valor inicial é pego da CHAVE
-                help="Digite sua resposta e clique em 'Enviar'."
-            )
-            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
-            
-
-# --- Fim de Jogo (Vitória ou Derrota) ---
-
-elif st.session_state.score == 10:
-    # Vitória
-    st.balloons()
-    st.snow()
-    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
-    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE V2!")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    # Derrota
-    st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
-    st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
-    st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and not st.session_state.game_started:
-    # Tela de espera
-    st.markdown(f"### Olá, **{st.session_state.name}**!")
-    st.info("Clique abaixo para começar a provar seu valor.")
-    if st.button("Iniciar Desafio de Matemática"):
-        st.session_state.game_started = True
-        reset_game()
+elif st.session_state.game_started and st.session_state.score < 1
