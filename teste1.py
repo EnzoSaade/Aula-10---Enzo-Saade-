@@ -1,215 +1,176 @@
 import streamlit as st
-import time
+import random
 
-# --- Tema e Configurações Iniciais ---
+# --- Configurações do App (Título e Layout) ---
 st.set_page_config(
-    page_title="37 Anos de Constituição Cidadã",
-    page_icon="🇧🇷",
-    layout="centered"
+    page_title="Missão Hokage Quiz",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
-# Estilos Temáticos do Brasil (Verde, Amarelo, Azul)
-# Adiciona estilos para cabeçalhos e botões de chat para dar um toque brasileiro
-st.markdown("""
-<style>
-/* Fundo da aplicação */
-.stApp {
-    background-color: #f0f8ff; /* Azul claro/branco para neutralidade */
-    color: #002776; /* Azul Escuro */
-}
-/* Título Principal */
-h1 {
-    color: #009246; /* Verde Bandeira */
-    text-align: center;
-    border-bottom: 3px solid #FFDE00; /* Amarelo Ouro */
-    padding-bottom: 10px;
-}
-/* Subtítulos */
-h2 {
-    color: #002776; /* Azul Escuro */
-}
-/* Botão de Chat (Input) */
-[data-testid="stFormSubmitButton"] {
-    background-color: #009246; /* Verde */
-    color: white;
-    border-radius: 8px;
-    transition: background-color 0.3s;
-}
-[data-testid="stFormSubmitButton"]:hover {
-    background-color: #FFDE00; /* Amarelo no hover */
-    color: #002776;
-    border: 1px solid #002776;
-}
-/* Mensagens do Assistente (Para o Diálogo parecer oficial/constitucional) */
-.stChatMessage [data-testid="stMarkdownContainer"] {
-    background-color: #E6F3FF; /* Azul Bebê para assistente */
-    padding: 10px;
-    border-radius: 10px;
-    border-left: 5px solid #002776; /* Linha Azul Escura */
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# --- Dados e Imagens ---
-ANIVERSARIO_ANOS = 37
-CONSTITUICAO_ANO = 1988
-# Imagem placeholder do livro da Constituição
-CONSTITUICAO_IMAGE_URL = "https://placehold.co/600x200/002776/ffffff?text=CONSTITUI%C3%87%C3%83O%201988%20|%2037%20ANOS"
-
-# Diálogo pré-definido para simular a interação
-DIALOGO = [
-    {
-        "pergunta": f"Olá! Eu sou o Guardião da Lei. Antes de iniciarmos nossa celebração dos **{ANIVERSARIO_ANOS} anos** da nossa Constituição, qual é o seu nome, Cidadão?",
-        "estado": "aguardando_nome"
-    },
-    {
-        "pergunta": "Excelente, {nome}! Nossa Constituição é carinhosamente apelidada de **'Constituição Cidadã'**. Você sabe qual é o principal motivo para este apelido?",
-        "estado": "aguardando_apelido",
-        "resposta_correta": ["direitos sociais", "democratização", "cidadania"],
-        "dica": "Pense no que ela restaurou para o povo brasileiro após o período militar."
-    },
-    {
-        "pergunta": "Perfeito! A ênfase nos **Direitos Sociais** foi um marco. Agora, me diga, o que a Constituição de 88 estabeleceu como **Fundamentos** da República Federativa do Brasil? (Dica: Pense no famoso 'S O C I D I V A P L U'!)",
-        "estado": "aguardando_fundamentos",
-        "resposta_correta": ["soberania", "cidadania", "dignidade da pessoa humana", "valores sociais do trabalho e da livre iniciativa", "pluralismo político"],
-        "dica": "O Artigo 1º é a chave! Um dos fundamentos é a **Dignidade da Pessoa Humana**."
-    },
-    {
-        "pergunta": "Magnífico! A **Dignidade Humana** é o pilar. Por último: Qual foi a grande inovação de 88 na área da **Seguridade Social**? (Saúde, Previdência e Assistência)",
-        "estado": "aguardando_seguridade",
-        "resposta_correta": ["saúde como direito de todos", "sistema único de saúde", "sus"],
-        "dica": "Começa com a sigla S U S..."
-    }
+# --- Variáveis do Quiz ---
+# Diálogos no estilo Naruto
+NARUTO_DIALOGUE = [
+    "Acredite! Eu vou me tornar o Hokage!",
+    "Eu não vou fugir, nem vou voltar atrás na minha palavra! Este é o meu jeito ninja!",
+    "Se você não gosta do seu destino, não aceite. Em vez disso, tenha a coragem de mudá-lo!",
+    "Dattebayo! Vamos lá, tente responder a mais uma!",
 ]
 
-# --- Inicialização da Sessão ---
-if "nome" not in st.session_state:
-    st.session_state.nome = None
-if "dialogo_step" not in st.session_state:
-    st.session_state.dialogo_step = 0
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+HOKAGE_GOAL = 3 # Pontos necessários para se tornar Hokage
 
+# Perguntas do Quiz
+QUIZ_QUESTIONS = [
+    {
+        "pergunta": "O jutsu secreto do Naruto é o Rasengan.",
+        "resposta": False,
+        "explicação": "O **Jutsu Secreto** (ou exclusivo) do Naruto é o **Jutsu Multiclones das Sombras** (Kage Bunshin no Jutsu), não o Rasengan. O Rasengan é um jutsu de Rank-A.",
+    },
+    {
+        "pergunta": "Naruto Uzumaki se torna o Sétimo Hokage de Konoha.",
+        "resposta": True,
+        "explicação": "Correto! Naruto realiza seu sonho e se torna o **Sétimo Hokage** (Nanadaime Hokage).",
+    },
+    {
+        "pergunta": "O nome do sensei do Time 7 é Jiraiya.",
+        "resposta": False,
+        "explicação": "Errado! O sensei original do Time 7 era **Kakashi Hatake**. Jiraiya era um dos lendários Sannin e tutor de Naruto.",
+    },
+    {
+        "pergunta": "O demônio selado dentro de Naruto é o Nove-Caudas (Kurama).",
+        "resposta": True,
+        "explicação": "Exato! Kurama, a Raposa de Nove-Caudas, estava selado dentro do Naruto.",
+    },
+    {
+        "pergunta": "O clã Uchiha é famoso por possuir o Byakugan.",
+        "resposta": False,
+        "explicação": "O clã Uchiha é famoso por possuir o **Sharingan**. O Byakugan pertence ao clã Hyūga.",
+    },
+]
 
-# --- Funções de Diálogo ---
+# Inicializa o estado de sessão
+if 'score' not in st.session_state:
+    st.session_state.score = 0
+if 'question_index' not in st.session_state:
+    st.session_state.question_index = 0
+if 'quiz_started' not in st.session_state:
+    st.session_state.quiz_started = False
 
-def get_dialogo_message(step):
-    """Retorna a pergunta ou encerramento do diálogo no passo atual.
+# --- Funções de Lógica ---
+
+def check_answer(user_answer, correct_answer, explanation):
+    """Verifica a resposta, atualiza a pontuação e exibe feedback."""
+    current_index = st.session_state.question_index
     
-    Substitui {nome} pelo nome do usuário se ele já estiver definido na sessão."""
-    
-    message = DIALOGO[step]["pergunta"] if step < len(DIALOGO) else \
-              f"Parabéns, {st.session_state.nome}! Sua dedicação aos fundamentos da nossa República é inquestionável. A celebração dos {ANIVERSARIO_ANOS} anos da Constituição de 1988 é um momento de reafirmar a nossa **Democracia** e a **Cidadania** plena. Obrigado por participar! **VIVA O BRASIL!**"
-              
-    # Se o nome já foi coletado, substitui a placeholder {nome} na string.
-    if st.session_state.nome and "{nome}" in message:
-        message = message.format(nome=st.session_state.nome)
+    # Previne que o usuário responda a mesma pergunta várias vezes e ganhe pontos
+    if 'answered_q' not in st.session_state or current_index != st.session_state.answered_q:
         
-    return message
+        st.session_state.answered_q = current_index
 
-
-def handle_user_input(user_prompt):
-    """Processa a resposta do usuário e avança o diálogo."""
-    current_step = st.session_state.dialogo_step
-    
-    if current_step == 0:
-        # Passo 0: Coleta o nome
-        st.session_state.nome = user_prompt.strip().title()
-        st.session_state.dialogo_step = 1
-        
-        # Chama get_dialogo_message(1) que agora fará a substituição do {nome}
-        return get_dialogo_message(st.session_state.dialogo_step)
-        
-    elif current_step > 0 and current_step < len(DIALOGO):
-        # Passos 1 a 3: Validação de respostas
-        # current_step aponta para o índice da pergunta sendo respondida.
-        estado_atual = DIALOGO[current_step]
-        respostas_validas = estado_atual["resposta_correta"]
-        
-        # Normaliza a entrada do usuário para comparação
-        prompt_normalizado = user_prompt.strip().lower()
-        
-        # Verifica se alguma palavra-chave correta está na resposta
-        if any(key in prompt_normalizado for key in respostas_validas):
-            st.session_state.dialogo_step += 1
-            feedback = "Correto! Isso mostra seu conhecimento da Carta Magna."
+        if user_answer == correct_answer:
+            st.session_state.score += 1
+            st.success(f"**Certo!** 🎉 Você marcou um ponto, Dattebayo!")
         else:
-            feedback = f"Sua resposta está incompleta. Uma dica: **{estado_atual['dica']}**. Tente novamente!"
-            # Não avança o passo, repete a pergunta
-            return feedback + "\n\n" + get_dialogo_message(current_step)
-
-        # Se a resposta foi correta, avança para a próxima pergunta
-        if st.session_state.dialogo_step < len(DIALOGO):
-            return feedback + "\n\n" + get_dialogo_message(st.session_state.dialogo_step)
-        else:
-            # Diálogo final
-            st.session_state.dialogo_step = len(DIALOGO)
-            return feedback + "\n\n" + get_dialogo_message(st.session_state.dialogo_step)
-            
+            st.error(f"**Errado!** 😔 Ah, que pena! Mas não desista!")
+        
+        st.info(f"**Explicação:** {explanation}")
+        st.session_state.show_next = True # Habilita o botão 'Próxima Pergunta'
     else:
-        # Diálogo concluído
-        return "Nossa celebração está encerrada! Sinta-se à vontade para refletir sobre a importância da nossa Constituição."
+        st.warning("Já verificamos esta resposta, Ttebayo!")
 
+def next_question():
+    """Avança para a próxima pergunta."""
+    st.session_state.question_index += 1
+    st.session_state.show_next = False # Esconde o botão 'Próxima Pergunta'
+    st.session_state.answered_q = -1 # Reseta o controle de resposta
 
-# --- Interface do Usuário ---
+def start_quiz():
+    """Inicia o quiz e reseta o estado."""
+    st.session_state.quiz_started = True
+    st.session_state.score = 0
+    st.session_state.question_index = 0
+    st.session_state.show_next = False
+    st.session_state.answered_q = -1
+    random.shuffle(QUIZ_QUESTIONS) # Embaralha as perguntas
 
-st.title(f"🎉 {ANIVERSARIO_ANOS} Anos da Constituição Cidadã! 🎉")
+# --- Interface do Streamlit ---
 
-# Exibe a imagem temática
-st.image(
-    CONSTITUICAO_IMAGE_URL,
-    caption=f"Constituição Federal de {CONSTITUICAO_ANO} - O Pilar da Democracia Brasileira"
-)
+st.title("Missão 🚀 Rumo a Hokage! (Quiz Naruto)")
 
-st.markdown("---")
-st.header("Diálogo com o Guardião da Lei")
-
-# --- Lógica do Chat ---
-
-# Mensagem inicial do assistente (se for o primeiro acesso)
-if st.session_state.dialogo_step == 0 and not st.session_state.messages:
-    initial_message = get_dialogo_message(0)
-    st.session_state.messages.append({"role": "assistant", "content": initial_message})
-
-# Exibe as mensagens históricas
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Entrada do usuário
-if st.session_state.dialogo_step < len(DIALOGO):
-    user_prompt = st.chat_input("Escreva sua resposta aqui...")
-    if user_prompt:
-        # Adiciona a mensagem do usuário ao histórico
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        
-        # Exibe a mensagem do usuário imediatamente
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-        
-        # Processa a resposta
-        response = handle_user_input(user_prompt)
-        
-        # Exibe a resposta do assistente (com um pequeno delay para efeito de digitação)
-        with st.chat_message("assistant"):
-            st_response = st.empty()
-            full_response = ""
-            for chunk in response.split():
-                full_response += chunk + " "
-                st_response.markdown(full_response)
-                time.sleep(0.05) # Pequeno delay para efeito
-            
-            # Adiciona a resposta final ao histórico
-            st.session_state.messages.append({"role": "assistant", "content": response})
-
-else:
-    # Quando o diálogo termina, exibe o encerramento no chat
-    # Garantir que a mensagem final seja exibida apenas uma vez
-    if not st.session_state.messages or st.session_state.messages[-1]["content"] != get_dialogo_message(len(DIALOGO)):
-        final_message = get_dialogo_message(len(DIALOGO))
-        st.session_state.messages.append({"role": "assistant", "content": final_message})
-        st.chat_message("assistant").markdown(final_message)
+if not st.session_state.quiz_started:
+    # Tela Inicial
+    st.header("Ei! Eu sou Naruto Uzumaki, e meu sonho é ser Hokage! Dattebayo!")
+    st.markdown("Para provar sua força e inteligência e se tornar um verdadeiro Ninja, você precisa passar neste quiz de **Verdadeiro ou Falso**.")
+    st.warning(f"Você precisa de **{HOKAGE_GOAL}** acertos para se tornar o próximo Hokage!")
     
-    st.markdown(f"### 🎉 **Parabéns, {st.session_state.nome}! Diálogo Concluído.** 🎉")
+    st.image("https://i.imgur.com/vH1NqXg.png", width=200) # Imagem simples de Naruto (link externo)
 
+    if st.button("Começar Missão!", use_container_width=True, type="primary"):
+        start_quiz()
+        st.experimental_rerun()
+else:
+    # --- Jogo em Andamento ---
+
+    current_score = st.session_state.score
+
+    # Verifica se o usuário atingiu o objetivo
+    if current_score >= HOKAGE_GOAL:
+        st.balloons()
+        st.success("## 🎉 MISSÃO CUMPRIDA! DATTEBAYO! 🎉")
+        st.markdown(f"**Parabéns!** Com **{current_score}** acertos, você provou ser digno e se tornou o novo **Hokage** de Konoha! Acredite!")
+        st.image("https://i.imgur.com/G3P2w2I.png", width=300) # Imagem de Hokage (link externo)
+        if st.button("Recomeçar o Caminho Ninja", use_container_width=True):
+            start_quiz()
+            st.experimental_rerun()
+        st.stop() # Interrompe a execução do quiz
+
+    # Exibe a pontuação e progresso
+    st.sidebar.markdown(f"## 🍥 Sua Pontuação (Hokage Meter):")
+    st.sidebar.metric(label="Acertos", value=current_score)
+    st.sidebar.progress(current_score / HOKAGE_GOAL)
+    st.sidebar.markdown(f"**Faltam {HOKAGE_GOAL - current_score} para a glória!**")
+
+    # Verifica se ainda há perguntas
+    if st.session_state.question_index < len(QUIZ_QUESTIONS):
+        
+        # Pergunta atual
+        q_data = QUIZ_QUESTIONS[st.session_state.question_index]
+        question_text = q_data["pergunta"]
+        correct_answer = q_data["resposta"]
+        explanation = q_data["explicação"]
+
+        st.markdown("---")
+        
+        # Diálogo de Naruto
+        st.markdown(f"**Naruto diz:** _{random.choice(NARUTO_DIALOGUE)}_")
+        
+        st.header(f"Pergunta {st.session_state.question_index + 1}:")
+        st.subheader(f"🤔 {question_text}")
+
+        col1, col2 = st.columns(2)
+
+        # Botões de Verdadeiro/Falso
+        # Os botões ativam a função check_answer e passam a resposta do usuário
+        
+        # O argumento 'key' é essencial para que o Streamlit saiba qual botão foi clicado
+        if col1.button("Verdadeiro", use_container_width=True, key=f"v_{st.session_state.question_index}", type="primary"):
+            check_answer(True, correct_answer, explanation)
+
+        if col2.button("Falso", use_container_width=True, key=f"f_{st.session_state.question_index}", type="secondary"):
+            check_answer(False, correct_answer, explanation)
+
+        st.markdown("---")
+        
+        # Botão para avançar (aparece apenas após responder)
+        if st.session_state.get('show_next', False):
+            if st.button("Próxima Pergunta, Dattebayo!", use_container_width=True):
+                next_question()
+                st.experimental_rerun()
+
+    else:
+        # Fim do Quiz (sem atingir o objetivo)
+        st.warning("## Missão Hokage Falhada (Por enquanto...)")
+        st.markdown(f"Você completou o quiz, mas conseguiu apenas **{current_score}** acertos. Você precisa treinar mais, Ttebayo!")
+        if st.button("Tentar Novamente (Não desista!)", use_container_width=True, type="primary"):
+            start_quiz()
+            st.experimental_rerun()
