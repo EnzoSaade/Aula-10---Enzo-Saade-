@@ -3,14 +3,15 @@ import random
 
 def generate_question(level):
     """Gera uma pergunta de matemática com base no nível de dificuldade."""
+    # Ajuste dos ranges para garantir que as perguntas se tornem progressivamente mais difíceis
     if level <= 2:  # Níveis 1 e 2: Adição e subtração simples
-        num1 = random.randint(1, 10 + (level * 5))
-        num2 = random.randint(1, 10 + (level * 5))
+        num1 = random.randint(1, 10 + (level * 2))
+        num2 = random.randint(1, 10 + (level * 2))
         operator = random.choice(['+', '-'])
         if operator == '-' and num1 < num2:
             num1, num2 = num2, num1  # Evitar resultados negativos
     elif level <= 5:  # Níveis 3 a 5: Adição, subtração e multiplicação
-        num1 = random.randint(5, 20 + (level * 5))
+        num1 = random.randint(5, 20 + (level * 3))
         num2 = random.randint(2, 10 + level)
         operator = random.choice(['+', '-', '*'])
         if operator == '-' and num1 < num2:
@@ -51,6 +52,27 @@ def init_session_state():
         st.session_state.current_answer = None
     if "game_started" not in st.session_state:
         st.session_state.game_started = False
+    if "feedback" not in st.session_state:
+        st.session_state.feedback = ""
+
+# Função para processar a resposta do usuário
+def check_answer():
+    user_answer = st.session_state.user_input_answer
+    if user_answer == st.session_state.current_answer:
+        st.session_state.score += 1
+        st.session_state.feedback = "Correto!"
+        if st.session_state.score < 10:
+            question, answer = generate_question(st.session_state.score + 1)
+            st.session_state.current_question = question
+            st.session_state.current_answer = answer
+    else:
+        st.session_state.feedback = f"Incorreto! A resposta correta era {st.session_state.current_answer}. O jogo será reiniciado."
+        st.session_state.score = 0
+        question, answer = generate_question(st.session_state.score + 1) # Reinicia com pergunta fácil
+        st.session_state.current_question = question
+        st.session_state.current_answer = answer
+    # Limpa o input do usuário para a próxima pergunta
+    st.session_state.user_input_answer = None
 
 # Função principal do aplicativo
 def main():
@@ -59,18 +81,26 @@ def main():
 
     # 1. Perguntar o nome do usuário
     if not st.session_state.username:
-        st.session_state.username = st.text_input("Digite seu nome para começar:")
+        st.session_state.username = st.text_input("Digite seu nome para começar:", key="username_input")
         if st.session_state.username:
-            st.experimental_rerun()
+            st.experimental_rerun() # Reruns once name is entered
     
     # Se o nome foi inserido, mostrar o resto do jogo
     else:
         st.write(f"Olá, {st.session_state.username}! Boa sorte.")
         st.write(f"**Pontuação: {st.session_state.score}**")
 
+        # Exibir feedback da última resposta
+        if st.session_state.feedback:
+            if "Correto" in st.session_state.feedback:
+                st.success(st.session_state.feedback)
+            else:
+                st.error(st.session_state.feedback)
+            st.session_state.feedback = "" # Limpa o feedback após exibição
+
         # Botão para iniciar ou reiniciar o jogo
         if not st.session_state.game_started:
-            if st.button("Começar o Desafio!"):
+            if st.button("Começar o Desafio!", key="start_button"):
                 st.session_state.score = 0
                 st.session_state.game_started = True
                 question, answer = generate_question(st.session_state.score + 1)
@@ -84,38 +114,20 @@ def main():
                 st.success("Parabéns! Você venceu o Desafio da Matemática!")
                 st.balloons()
                 st.session_state.game_started = False # Termina o jogo
-                if st.button("Jogar Novamente"):
+                if st.button("Jogar Novamente", key="play_again_button"):
                     st.session_state.score = 0
                     st.session_state.username = ""
+                    st.session_state.current_question = None
+                    st.session_state.current_answer = None
                     st.experimental_rerun()
 
             else:
                 # Apresentar a pergunta
                 st.write(st.session_state.current_question)
                 
-                # Usar um formulário para a resposta
-                with st.form(key="answer_form"):
-                    user_answer = st.number_input("Sua resposta:", format="%d", step=1)
-                    submit_button = st.form_submit_button(label='Enviar')
-
-                if submit_button:
-                    if user_answer == st.session_state.current_answer:
-                        st.session_state.score += 1
-                        st.success("Resposta correta!")
-                        if st.session_state.score < 10:
-                            # Gera a próxima pergunta
-                            question, answer = generate_question(st.session_state.score + 1)
-                            st.session_state.current_question = question
-                            st.session_state.current_answer = answer
-                        st.experimental_rerun()
-                    else:
-                        st.error(f"Resposta errada! O jogo será reiniciado. A resposta correta era {st.session_state.current_answer}.")
-                        st.session_state.score = 0
-                        # Gera uma nova pergunta fácil
-                        question, answer = generate_question(st.session_state.score + 1)
-                        st.session_state.current_question = question
-                        st.session_state.current_answer = answer
-                        st.experimental_rerun()
+                # Campo de entrada para a resposta do usuário e botão de envio
+                st.number_input("Sua resposta:", format="%d", step=1, key="user_input_answer", on_change=check_answer)
+                st.button("Enviar Resposta", on_click=check_answer, key="submit_answer_button")
 
 if __name__ == "__main__":
     main()
