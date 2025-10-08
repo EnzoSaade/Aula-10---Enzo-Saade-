@@ -46,8 +46,6 @@ def get_random_quote():
     st.session_state.last_quote_index = new_index
     return HISTORICAL_MATH_QUOTES[new_index]
 
-# FUNÇÃO calculate_bg_color REMOVIDA
-
 def init_session_state():
     """Inicializa as variáveis de estado da sessão."""
     if 'name' not in st.session_state: st.session_state.name = ""
@@ -101,46 +99,3 @@ def generate_new_question():
         
         num1 = random.randint(10, limit)
         num2 = random.randint(1, limit)
-        num3 = random.randint(1, int(limit / 10)) 
-        
-        try:
-            if op1 == '-':
-                if num1 < num2: num1, num2 = num2, num1
-                result_part_1 = ops[op1](num1, num2)
-            elif op1 == '/':
-                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0])
-                num2 = divisor
-                result_part_1 = int(ops[op1](num1, num2))
-            else: # '+' ou '*'
-                result_part_1 = ops[op1](num1, num2)
-
-            question_text = f"({num1} {op1} {num2}) {op2} {num3}"
-            
-            if op2 == '+':
-                answer = result_part_1 + num3
-            elif op2 == '-':
-                answer = result_part_1 - num3
-            else: # op2 == '*'
-                answer = result_part_1 * num3
-        except:
-            return generate_new_question() 
-
-        if abs(answer) > 1000000:
-            return generate_new_question() 
-            
-    else:
-        op1 = random.choice(available_ops)
-        
-        num1 = random.randint(1, limit)
-        num2 = random.randint(1, limit)
-        
-        try:
-            if op1 == '-':
-                if num1 < num2: num1, num2 = num2, num1
-                answer = ops[op1](num1, num2)
-                
-            elif op1 == '/':
-                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if limit % n == 0])
-                num2 = divisor
-                num1 = random.randint(1, int(limit / divisor)) * divisor
-                answer = int(ops
