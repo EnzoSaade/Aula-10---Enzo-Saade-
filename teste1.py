@@ -153,6 +153,27 @@ def check_answer():
         st.warning("Por favor, digite apenas um número inteiro.")
 
 
+def get_progress_bar(score):
+    """Cria uma barra de progresso visual baseada na pontuação."""
+    total_goals = 10
+    
+    # Emojis para as metas
+    if score >= 7:
+        level_emoji = "🔥"
+    elif score >= 4:
+        level_emoji = "🧠"
+    else:
+        level_emoji = "💡"
+    
+    # Desenha os emojis de acerto (preenchidos)
+    filled_emojis = "✅" * score
+    # Desenha os emojis de metas restantes (vazios)
+    empty_emojis = "⬜" * (total_goals - score)
+    
+    st.markdown(f"**Progresso até o Título:** {level_emoji} {filled_emojis}{empty_emojis}")
+    st.progress(score / total_goals)
+
+
 # --- Layout do Aplicativo Streamlit ---
 
 init_session_state()
@@ -164,95 +185,6 @@ st.set_page_config(
 )
 
 st.title("DESAFIO DA MATEMÁTICA")
-st.markdown("---")
 
 # Área de Entrada do Nome do Usuário
-if not st.session_state.name:
-    st.header("Modo de Dificuldade Extrema!")
-    
-    # NOVO BLOCO DE DECORAÇÃO (substitui a imagem)
-    st.markdown("""
-    <div style='
-        padding: 15px; 
-        border-radius: 10px; 
-        border: 2px solid #FF4B4B; /* Cor vermelha do Streamlit */
-        background-color: #f0f2f6; 
-        text-align: center;
-        margin-bottom: 20px;
-    '>
-        <h3 style='color: #FF4B4B; margin: 0;'>🧠 ULTIMATE CHALLENGE ATIVADO 🚀</h3>
-        <p style='margin: 5px 0 0 0;'>
-            Prepare-se para o teste final de **Ordem de Operações** e **Números Exponenciais**!
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.form(key='name_form'):
-        name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
-        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
-        
-        if submit_button and name_input:
-            st.session_state.name = name_input.title().strip()
-            st.session_state.game_started = True
-            st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de Operações?")
-            
-            reset_game() 
-            
-        elif submit_button and not name_input:
-            st.warning("Por favor, digite seu nome para começar.")
-
-# --- Lógica do Jogo ---
-
-elif st.session_state.game_started and st.session_state.score < 10:
-    # Jogo em andamento
-
-    st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
-    st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
-    
-    col1, col2 = st.columns(2)
-    col1.metric("Pontuação Atual", st.session_state.score)
-    col2.metric("Dificuldade (Máx. Valor)", min(st.session_state.level_max_value, 10000))
-    
-    st.markdown("---")
-    
-    if st.session_state.question:
-        question_text, _ = st.session_state.question
-        st.header(f"Questão {st.session_state.score + 1}:")
-        st.markdown(f"## **{question_text}** = ?")
-        
-        with st.form(key='quiz_form'):
-            answer_input = st.number_input(
-                "Sua Resposta (Inteiro):", 
-                min_value=-99999999, 
-                step=1, 
-                key="user_input", 
-                value=st.session_state.user_input, 
-                help="Digite sua resposta e clique em 'Enviar'."
-            )
-            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
-            
-
-# --- Fim de Jogo (Vitória ou Derrota) ---
-
-elif st.session_state.score == 10:
-    st.balloons()
-    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
-    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
-    st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
-    st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and not st.session_state.game_started:
-    st.markdown(f"### Olá, **{st.session_state.name}**!")
-    st.info("Clique abaixo para começar a provar seu valor.")
-    if st.button("Iniciar Desafio da Matemática"):
-        st.session_state.game_started = True
-        reset_game()
+if not st.
