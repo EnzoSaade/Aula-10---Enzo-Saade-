@@ -1,100 +1,202 @@
 import streamlit as st
+import time
 
-# --- Configurações Iniciais ---
+# --- Tema e Configurações Iniciais ---
 st.set_page_config(
-    page_title="Invenção do Laboratório do Futuro",
-    page_icon="🔬"
+    page_title="37 Anos de Constituição Cidadã",
+    page_icon="🇧🇷",
+    layout="centered"
 )
 
-# Definição do Título e Saudação
-st.title("Invenção do Laboratório do Futuro (Meu Programa)")
-st.markdown("---")
-st.write("### Olá, Recruta! Seja bem-vindo ao meu domínio!")
+# Estilos Temáticos do Brasil (Verde, Amarelo, Azul)
+# Adiciona estilos para cabeçalhos e botões de chat para dar um toque brasileiro
+st.markdown("""
+<style>
+/* Fundo da aplicação */
+.stApp {
+    background-color: #f0f8ff; /* Azul claro/branco para neutralidade */
+    color: #002776; /* Azul Escuro */
+}
+/* Título Principal */
+h1 {
+    color: #009246; /* Verde Bandeira */
+    text-align: center;
+    border-bottom: 3px solid #FFDE00; /* Amarelo Ouro */
+    padding-bottom: 10px;
+}
+/* Subtítulos */
+h2 {
+    color: #002776; /* Azul Escuro */
+}
+/* Botão de Chat (Input) */
+[data-testid="stFormSubmitButton"] {
+    background-color: #009246; /* Verde */
+    color: white;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+}
+[data-testid="stFormSubmitButton"]:hover {
+    background-color: #FFDE00; /* Amarelo no hover */
+    color: #002776;
+    border: 1px solid #002776;
+}
+/* Mensagens do Assistente (Para o Diálogo parecer oficial/constitucional) */
+.stChatMessage [data-testid="stMarkdownContainer"] {
+    background-color: #E6F3FF; /* Azul Bebê para assistente */
+    padding: 10px;
+    border-radius: 10px;
+    border-left: 5px solid #002776; /* Linha Azul Escura */
+}
+</style>
+""", unsafe_allow_html=True)
 
-# 1. Entrada de Nome
-nome = st.text_input("Digite o seu nome de companheiro de laboratório:")
-if nome:
-    # A saudação inicial usa um toque de HOUOUIN KYOUMA!
-    st.markdown(f"**Eu sou Hououin Kyouma!** Saudações, {nome.upper()}! O destino da humanidade depende do seu próximo passo.")
-    st.markdown("---")
 
-# 2. Diálogo Criativo (Chat)
-# Inicializa o histórico de chat na sessão, se ainda não existir
+# --- Dados e Imagens ---
+ANIVERSARIO_ANOS = 37
+CONSTITUICAO_ANO = 1988
+# Imagem placeholder do livro da Constituição
+CONSTITUICAO_IMAGE_URL = "https://placehold.co/600x200/002776/ffffff?text=CONSTITUI%C3%87%C3%83O%201988%20|%2037%20ANOS"
+
+# Diálogo pré-definido para simular a interação
+DIALOGO = [
+    {
+        "pergunta": f"Olá! Eu sou o Guardião da Lei. Antes de iniciarmos nossa celebração dos **{ANIVERSARIO_ANOS} anos** da nossa Constituição, qual é o seu nome, Cidadão?",
+        "estado": "aguardando_nome"
+    },
+    {
+        "pergunta": "Excelente, {nome}! Nossa Constituição é carinhosamente apelidada de **'Constituição Cidadã'**. Você sabe qual é o principal motivo para este apelido?",
+        "estado": "aguardando_apelido",
+        "resposta_correta": ["direitos sociais", "democratização", "cidadania"],
+        "dica": "Pense no que ela restaurou para o povo brasileiro após o período militar."
+    },
+    {
+        "pergunta": "Perfeito! A ênfase nos **Direitos Sociais** foi um marco. Agora, me diga, o que a Constituição de 88 estabeleceu como **Fundamentos** da República Federativa do Brasil? (Dica: Pense no famoso 'S O C I D I V A P L U'!)",
+        "estado": "aguardando_fundamentos",
+        "resposta_correta": ["soberania", "cidadania", "dignidade da pessoa humana", "valores sociais do trabalho e da livre iniciativa", "pluralismo político"],
+        "dica": "O Artigo 1º é a chave! Um dos fundamentos é a **Dignidade da Pessoa Humana**."
+    },
+    {
+        "pergunta": "Magnífico! A **Dignidade Humana** é o pilar. Por último: Qual foi a grande inovação de 88 na área da **Seguridade Social**? (Saúde, Previdência e Assistência)",
+        "estado": "aguardando_seguridade",
+        "resposta_correta": ["saúde como direito de todos", "sistema único de saúde", "sus"],
+        "dica": "Começa com a sigla S U S..."
+    }
+]
+
+# --- Inicialização da Sessão ---
+if "nome" not in st.session_state:
+    st.session_state.nome = None
+if "dialogo_step" not in st.session_state:
+    st.session_state.dialogo_step = 0
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-st.header("Terminal de Comunicação com a Base (Chat)")
+
+# --- Funções de Diálogo ---
+
+def get_dialogo_message(step):
+    """Retorna a pergunta ou encerramento do diálogo no passo atual."""
+    if step < len(DIALOGO):
+        return DIALOGO[step]["pergunta"]
+    else:
+        return f"Parabéns, {st.session_state.nome}! Sua dedicação aos fundamentos da nossa República é inquestionável. A celebração dos {ANIVERSARIO_ANOS} anos da Constituição de 1988 é um momento de reafirmar a nossa **Democracia** e a **Cidadania** plena. Obrigado por participar! **VIVA O BRASIL!**"
+
+def handle_user_input(user_prompt):
+    """Processa a resposta do usuário e avança o diálogo."""
+    current_step = st.session_state.dialogo_step
+    
+    if current_step == 0:
+        # Passo 0: Coleta o nome
+        st.session_state.nome = user_prompt.strip().title()
+        st.session_state.dialogo_step = 1
+        return get_dialogo_message(st.session_state.dialogo_step)
+        
+    elif current_step > 0 and current_step < len(DIALOGO):
+        # Passos 1 a 3: Validação de respostas
+        estado_atual = DIALOGO[current_step - 1]
+        respostas_validas = estado_atual["resposta_correta"]
+        
+        # Normaliza a entrada do usuário para comparação
+        prompt_normalizado = user_prompt.strip().lower()
+        
+        # Verifica se alguma palavra-chave correta está na resposta
+        if any(key in prompt_normalizado for key in respostas_validas):
+            st.session_state.dialogo_step += 1
+            feedback = "Correto! Isso mostra seu conhecimento da Carta Magna."
+        else:
+            feedback = f"Sua resposta está incompleta. Uma dica: **{estado_atual['dica']}**. Tente novamente!"
+            # Não avança o passo, repete a pergunta
+            return feedback + "\n\n" + get_dialogo_message(current_step)
+
+        # Se a resposta foi correta, avança para a próxima pergunta
+        if st.session_state.dialogo_step < len(DIALOGO):
+            return feedback + "\n\n" + get_dialogo_message(st.session_state.dialogo_step)
+        else:
+            # Diálogo final
+            st.session_state.dialogo_step = len(DIALOGO)
+            return feedback + "\n\n" + get_dialogo_message(st.session_state.dialogo_step)
+            
+    else:
+        # Diálogo concluído
+        return "Nossa celebração está encerrada! Sinta-se à vontade para refletir sobre a importância da nossa Constituição."
+
+
+# --- Interface do Usuário ---
+
+st.title(f"🎉 {ANIVERSARIO_ANOS} Anos da Constituição Cidadã! 🎉")
+
+# Exibe a imagem temática
+st.image(
+    CONSTITUICAO_IMAGE_URL,
+    caption=f"Constituição Federal de {CONSTITUICAO_ANO} - O Pilar da Democracia Brasileira"
+)
+
+st.markdown("---")
+st.header("Diálogo com o Guardião da Lei")
+
+# --- Lógica do Chat ---
+
+# Mensagem inicial do assistente (se for o primeiro acesso)
+if st.session_state.dialogo_step == 0 and not st.session_state.messages:
+    initial_message = get_dialogo_message(0)
+    st.session_state.messages.append({"role": "assistant", "content": initial_message})
 
 # Exibe as mensagens históricas
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Processa a entrada do usuário
-if prompt := st.chat_input("Diga algo ao Hououin Kyouma..."):
-    # Adiciona a mensagem do usuário ao histórico
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Entrada do usuário
+if st.session_state.dialogo_step < len(DIALOGO):
+    user_prompt = st.chat_input("Escreva sua resposta aqui...")
+    if user_prompt:
+        # Adiciona a mensagem do usuário ao histórico
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+        
+        # Exibe a mensagem do usuário imediatamente
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+        
+        # Processa a resposta
+        response = handle_user_input(user_prompt)
+        
+        # Exibe a resposta do assistente (com um pequeno delay para efeito de digitação)
+        with st.chat_message("assistant"):
+            st_response = st.empty()
+            full_response = ""
+            for chunk in response.split():
+                full_response += chunk + " "
+                st_response.markdown(full_response)
+                time.sleep(0.05) # Pequeno delay para efeito
+            
+            # Adiciona a resposta final ao histórico
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+else:
+    # Quando o diálogo termina, exibe o encerramento no chat
+    if st.session_state.messages[-1]["role"] != "assistant" or st.session_state.messages[-1]["content"] != get_dialogo_message(len(DIALOGO)):
+        final_message = get_dialogo_message(len(DIALOGO))
+        st.session_state.messages.append({"role": "assistant", "content": final_message})
+        st.chat_message("assistant").markdown(final_message)
     
-    # Exibe a mensagem do usuário imediatamente
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Lógica de Resposta do "Cientista Maluco" (Mock LLM/Personagem)
-    # Em uma aplicação real, você faria uma chamada para a API Gemini aqui.
-    
-    response = ""
-    lower_prompt = prompt.lower()
-    
-    if any(keyword in lower_prompt for keyword in ["olá", "oi", "bom dia"]):
-        response = "Mwahaha! Eu sou Hououin Kyouma! O que o trouxe ao epicentro da conspiração neste momento?"
-    elif any(keyword in lower_prompt for keyword in ["site", "programa", "o que é"]):
-        response = "Isto é um Dispositivo de Observação do Mundo, disfarçado de site! Uma arma contra a Organização. Não toque em nada!"
-    elif any(keyword in lower_prompt for keyword in ["tempo", "viagem"]):
-        response = "A viagem no tempo... uma fronteira perigosa, mas necessária! Nossas invenções estão perto da perfeição, recruta!"
-    elif any(keyword in lower_prompt for keyword in ["agência", "organização", "sern"]):
-        response = "A Organização está observando! Seja cauteloso com suas palavras, pois até as borboletas podem causar tsunamis dimensionais! (El Psy Congroo)"
-    else:
-        # Resposta padrão
-        import random
-        dramatic_phrases = [
-            "Não me subestime! Essa é a Escolha de Steins;Gate!",
-            "Eu já previ isso. É o curso natural das coisas. Não há escapatória!",
-            "O mundo está prestes a mudar. Prepare-se para o caos que está por vir!",
-            "Pff... parece que terei que usar o telefone micro-ondas! Espere o D-Mail!"
-        ]
-        response = random.choice(dramatic_phrases)
-
-    # Exibe e adiciona a resposta do "Assistente" (Personagem)
-    with st.chat_message("assistant"):
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-# 3. Imagem do Personagem
-st.markdown("---")
-st.header("O Líder do Laboratório")
-st.write("O grande gênio e cientista louco, Hououin Kyouma, também conhecido como **Okabe Rintarou**!")
-
-# Use uma URL de imagem de Okabe Rintarou. Substitua pela sua imagem preferida.
-# Usando um placeholder de imagem para Okabe Rintarou com um fundo preto para estilo.
-okabe_image_url = "https://placehold.co/600x400/000000/ffffff?text=OKABE%20RINTAROU%20%7C%20El%20Psy%20Congroo"
-
-# Adicione um fallback para imagens reais do Steins;Gate
-# Se o link acima não funcionar ou você quiser um visual melhor:
-# okabe_image_url = "https://i.pinimg.com/originals/9f/8e/3c/9f8e3c5a6d71b7f0f63b20e0f8f8b8a5.jpg"
-
-st.image(
-    okabe_image_url,
-    caption="El Psy Congroo!"
-)
-st.markdown(
-    """
-    <style>
-    /* Estilizando o contêiner de imagem para um melhor visual */
-    .stImage {
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+    st.markdown(f"### 🎉 **Parabéns, {st.session_state.nome}! Diálogo Concluído.** 🎉")
