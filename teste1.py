@@ -107,7 +107,7 @@ if not st.session_state.quiz_started:
 
     if st.button("Começar Missão!", use_container_width=True, type="primary"):
         start_quiz()
-        st.experimental_rerun()
+        st.rerun() # CORRIGIDO: Usando st.rerun()
 else:
     # --- Jogo em Andamento ---
 
@@ -121,7 +121,7 @@ else:
         st.image("https://i.imgur.com/G3P2w2I.png", width=300) # Imagem de Hokage (link externo)
         if st.button("Recomeçar o Caminho Ninja", use_container_width=True):
             start_quiz()
-            st.experimental_rerun()
+            st.rerun() # CORRIGIDO: Usando st.rerun()
         st.stop() # Interrompe a execução do quiz
 
     # Exibe a pontuação e progresso
@@ -150,27 +150,6 @@ else:
         col1, col2 = st.columns(2)
 
         # Botões de Verdadeiro/Falso
-        # Os botões ativam a função check_answer e passam a resposta do usuário
-        
         # O argumento 'key' é essencial para que o Streamlit saiba qual botão foi clicado
         if col1.button("Verdadeiro", use_container_width=True, key=f"v_{st.session_state.question_index}", type="primary"):
-            check_answer(True, correct_answer, explanation)
-
-        if col2.button("Falso", use_container_width=True, key=f"f_{st.session_state.question_index}", type="secondary"):
-            check_answer(False, correct_answer, explanation)
-
-        st.markdown("---")
-        
-        # Botão para avançar (aparece apenas após responder)
-        if st.session_state.get('show_next', False):
-            if st.button("Próxima Pergunta, Dattebayo!", use_container_width=True):
-                next_question()
-                st.experimental_rerun()
-
-    else:
-        # Fim do Quiz (sem atingir o objetivo)
-        st.warning("## Missão Hokage Falhada (Por enquanto...)")
-        st.markdown(f"Você completou o quiz, mas conseguiu apenas **{current_score}** acertos. Você precisa treinar mais, Ttebayo!")
-        if st.button("Tentar Novamente (Não desista!)", use_container_width=True, type="primary"):
-            start_quiz()
-            st.experimental_rerun()
+            check_answer(
