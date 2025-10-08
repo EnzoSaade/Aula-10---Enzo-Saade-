@@ -109,7 +109,7 @@ def generate_new_question():
     if score >= 6:
         op1 = random.choice(available_ops)
         op2 = random.choice([op for op in available_ops if op != '/'])
-        # (Lógica de geração de questão complexa omitida por brevidade, mas mantida)
+        
         num1 = random.randint(10, limit)
         num2 = random.randint(1, limit)
         num3 = random.randint(1, int(limit / 10)) 
@@ -141,7 +141,7 @@ def generate_new_question():
             
     else:
         op1 = random.choice(available_ops)
-        # (Lógica de geração de questão simples omitida por brevidade, mas mantida)
+        
         num1 = random.randint(1, limit)
         num2 = random.randint(1, limit)
         
@@ -186,30 +186,4 @@ def check_answer():
         return
         
     user_input = st.session_state.user_input
-    if st.session_state.question is None: return
-
-    _, correct_answer = st.session_state.question
-
-    try:
-        user_answer_num = int(user_input)
-        
-        if user_answer_num == correct_answer:
-            st.session_state.score += 1
-            st.session_state.last_attempt_correct = True
-            st.balloons()
-            
-            if st.session_state.score < 10:
-                st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
-                st.session_state.user_input = 0 
-                time.sleep(0.5) 
-                generate_new_question()
-            else:
-                pass # Vai para a tela de vitória
-            
-        else:
-            st.error(f"Resposta incorreta, {st.session_state.name} 😔. A resposta correta era **{correct_answer}**.")
-            st.session_state.last_attempt_correct = False
-            st.session_state.game_started = False 
-            
-    except ValueError:
-        st.warning("
+    if st.session_state.question is
