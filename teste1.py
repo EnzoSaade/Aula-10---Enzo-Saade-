@@ -139,7 +139,7 @@ def check_answer():
             st.session_state.score += 1
             st.session_state.last_attempt_correct = True
             
-            # EFEITOS ESPECIAIS AO ACERTAR: APENAS BALÕES
+            # EFEITOS ESPECIAIS: APENAS BALÕES
             st.balloons()
             
             if st.session_state.score < 10:
@@ -195,4 +195,11 @@ if not st.session_state.name:
 
 # --- Lógica do Jogo ---
 
-elif st.session_state.game_started and st.session_state.score < 1
+# LINHA CORRIGIDA (com o ':')
+elif st.session_state.game_started and st.session_state.score < 10:
+    # Jogo em andamento
+
+    st.markdown(f"### Mãos à obra, **{st.session_state.name}**!")
+    st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
+    
+    # Exibe a pontuação e o nível de dificuldade
