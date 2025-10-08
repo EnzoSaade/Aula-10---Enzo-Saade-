@@ -56,12 +56,14 @@ def init_session_state():
     if 'level_max_value' not in st.session_state: st.session_state.level_max_value = 10 
     if 'user_input' not in st.session_state: st.session_state.user_input = 0
     if 'last_quote_index' not in st.session_state: st.session_state.last_quote_index = -1
-    if 'current_tip' not in st.session_state: st.session_state.current_tip = get_random_quote()
     
     # VARIÁVEIS PARA O TEMPORIZADOR
     if 'time_limit' not in st.session_state: st.session_state.time_limit = 30 # Segundos por questão
     if 'time_remaining' not in st.session_state: st.session_state.time_remaining = 30
     if 'question_start_time' not in st.session_state: st.session_state.question_start_time = time.time()
+    
+    # Adicionado aqui para garantir que exista, se a lógica de reset não for chamada imediatamente.
+    if 'current_tip' not in st.session_state: st.session_state.current_tip = "Prepare-se para o desafio!" 
 
 def reset_game():
     """Reinicia a pontuação, a dificuldade e o temporizador."""
@@ -69,6 +71,8 @@ def reset_game():
     st.session_state.level_max_value = 10
     st.session_state.last_attempt_correct = None
     st.session_state.user_input = 0 
+    
+    # GERA A CITAÇÃO AQUI (Melhor lugar)
     st.session_state.current_tip = get_random_quote()
     
     # RESET DO TEMPORIZADOR
@@ -99,3 +103,24 @@ def generate_new_question():
         
         num1 = random.randint(10, limit)
         num2 = random.randint(1, limit)
+        num3 = random.randint(1, int(limit / 10)) 
+        
+        try:
+            if op1 == '-':
+                if num1 < num2: num1, num2 = num2, num1
+                result_part_1 = ops[op1](num1, num2)
+            elif op1 == '/':
+                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0])
+                num2 = divisor
+                result_part_1 = int(ops[op1](num1, num2))
+            else: # '+' ou '*'
+                result_part_1 = ops[op1](num1, num2)
+
+            question_text = f"({num1} {op1} {num2}) {op2} {num3}"
+            
+            if op2 == '+':
+                answer = result_part_1 + num3
+            elif op2 == '-':
+                answer = result_part_1 - num3
+            else: # op2 == '*'
+                answer = result_part_1 * num3
