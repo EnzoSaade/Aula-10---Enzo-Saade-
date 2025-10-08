@@ -94,4 +94,69 @@ def generate_new_question():
     if score >= 5: available_ops.append('*') 
     if score >= 7: available_ops.append('/') 
     
-    # Tenta gerar a questão (segurança contra
+    # Tenta gerar a questão (segurança contra erros de cálculo)
+    try:
+        if score >= 6:
+            # Questões com parênteses e duas operações
+            op1 = random.choice(available_ops)
+            op2 = random.choice([op for op in available_ops if op != '/'])
+            
+            num1 = random.randint(10, limit)
+            num2 = random.randint(1, limit)
+            num3 = random.randint(1, int(limit / 10)) 
+            
+            if op1 == '-':
+                if num1 < num2: num1, num2 = num2, num1
+                result_part_1 = ops[op1](num1, num2)
+            elif op1 == '/':
+                # Garante que num1 seja divisível por um divisor razoável
+                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0] or [2]) # Se não achar divisor, usa 2
+                num2 = divisor
+                result_part_1 = int(ops[op1](num1, num2))
+            else: # '+' ou '*'
+                result_part_1 = ops[op1](num1, num2)
+
+            question_text = f"({num1} {op1} {num2}) {op2} {num3}"
+            
+            if op2 == '+':
+                answer = result_part_1 + num3
+            elif op2 == '-':
+                answer = result_part_1 - num3
+            else: # op2 == '*'
+                answer = result_part_1 * num3
+            
+            if abs(answer) > 1000000:
+                return generate_new_question() 
+                
+        else:
+            # Questões simples (uma operação)
+            op1 = random.choice(available_ops)
+            
+            num1 = random.randint(1, limit)
+            num2 = random.randint(1, limit)
+            
+            if op1 == '-':
+                if num1 < num2: num1, num2 = num2, num1
+                answer = ops[op1](num1, num2)
+                
+            elif op1 == '/':
+                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if limit % n == 0] or [2])
+                num2 = divisor
+                num1 = random.randint(1, int(limit / divisor)) * divisor
+                answer = int(ops[op1](num1, num2))
+                
+            else: # '+' ou '*'
+                answer = ops[op1](num1, num2)
+            
+            question_text = f"{num1} {op1} {num2}"
+
+        st.session_state.question = (question_text, int(answer))
+        
+        st.session_state.current_tip = get_random_quote()
+        
+        # REINICIA O TEMPORIZADOR A CADA NOVA QUESTÃO
+        st.session_state.time_remaining = st.session_state.time_limit
+        st.session_state.question_start_time = time.time()
+        
+    except Exception:
+        # Se ocorrer qualquer erro (divisão por
