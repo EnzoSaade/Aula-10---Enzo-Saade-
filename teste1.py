@@ -121,4 +121,85 @@ def generate_new_question():
             if op2 == '+':
                 answer = result_part_1 + num3
             elif op2 == '-':
-                answer = result
+                answer = result_part_1 - num3
+            else: # op2 == '*'
+                answer = result_part_1 * num3
+            
+            if abs(answer) > 1000000:
+                return generate_new_question() 
+                
+        else:
+            # Questões simples (uma operação)
+            op1 = random.choice(available_ops)
+            
+            num1 = random.randint(1, limit)
+            num2 = random.randint(1, limit)
+            
+            if op1 == '-':
+                if num1 < num2: num1, num2 = num2, num1
+                answer = ops[op1](num1, num2)
+                
+            elif op1 == '/':
+                divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if limit % n == 0] or [2])
+                num2 = divisor
+                num1 = random.randint(1, int(limit / divisor)) * divisor
+                answer = int(ops[op1](num1, num2))
+                
+            else: # '+' ou '*'
+                answer = ops[op1](num1, num2)
+            
+            question_text = f"{num1} {op1} {num2}"
+
+        st.session_state.question = (question_text, int(answer))
+        
+        st.session_state.current_tip = get_random_quote()
+        
+        # REINICIA O TEMPORIZADOR A CADA NOVA QUESTÃO
+        st.session_state.time_remaining = st.session_state.time_limit
+        st.session_state.question_start_time = time.time()
+        
+    except Exception:
+        # Se ocorrer qualquer erro, tente novamente
+        return generate_new_question()
+
+
+def check_answer():
+    """Verifica a resposta do usuário. Chamada pelo botão de submissão."""
+    
+    if st.session_state.question is None: 
+        return
+        
+    # Garante que o tempo restante seja calculado antes da verificação
+    elapsed_time = time.time() - st.session_state.question_start_time
+    st.session_state.time_remaining = st.session_state.time_limit - math.floor(elapsed_time)
+
+    if st.session_state.time_remaining <= 0:
+        # Se o tempo acabou antes de submeter, trata como falha
+        st.session_state.last_attempt_correct = False
+        st.session_state.game_started = False 
+        return
+        
+    user_input = st.session_state.user_input
+    
+    _, correct_answer = st.session_state.question
+
+    try:
+        user_answer_num = int(user_input) 
+        
+        if user_answer_num == correct_answer:
+            st.session_state.score += 1
+            st.session_state.last_attempt_correct = True
+            st.balloons()
+            
+            if st.session_state.score < 10:
+                st.success(f"Excelente, **{st.session_state.name}**! Resposta correta!")
+                st.session_state.user_input = 0 
+                time.sleep(0.5) 
+                generate_new_question()
+            else:
+                pass # Vai para a tela de vitória
+            
+        else:
+            st.error(f"Resposta incorreta, **{st.session_state.name}** 😔. A resposta correta era **{correct_answer}**.")
+            st.session_state.last_attempt_correct = False
+            st.session_state.game_started
