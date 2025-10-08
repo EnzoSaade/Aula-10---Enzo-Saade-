@@ -159,7 +159,7 @@ def generate_new_question():
         st.session_state.question_start_time = time.time()
         
     except Exception:
-        # Se ocorrer qualquer erro, tente novamente
+        # Se ocorrer qualquer erro (divisão por zero, etc.), tente novamente
         return generate_new_question()
 
 
@@ -202,4 +202,234 @@ def check_answer():
         else:
             st.error(f"Resposta incorreta, **{st.session_state.name}** 😔. A resposta correta era **{correct_answer}**.")
             st.session_state.last_attempt_correct = False
-            st.session_state.game_started
+            st.session_state.game_started = False 
+            
+    except ValueError:
+        st.warning("Por favor, digite apenas um número inteiro.")
+
+
+# A função principal do temporizador que força a atualização da página
+def start_timer():
+    if not st.session_state.game_started or st.session_state.score == 10:
+        return
+
+    # Calcula o tempo decorrido e o restante
+    elapsed_time = time.time() - st.session_state.question_start_time
+    time_left = st.session_state.time_limit - math.floor(elapsed_time)
+    
+    # Atualiza o estado da sessão
+    st.session_state.time_remaining = time_left
+
+    if time_left <= 0:
+        # Fim de jogo por tempo esgotado
+        st.error(f"⏰ **TEMPO ESGOTADO!** **{st.session_state.name}**, você não conseguiu responder a tempo.")
+        st.session_state.last_attempt_correct = False
+        st.session_state.game_started = False
+        st.rerun() # Força a ir para a tela de derrota
+    else:
+        # Se ainda há tempo, força a reexecução do script após 1 segundo
+        time.sleep(1)
+        st.rerun()
+
+
+def get_progress_bar(score):
+    """Cria uma barra de progresso visual baseada na pontuação."""
+    total_goals = 10
+    
+    if score >= 7:
+        level_emoji = "🔥"
+    elif score >= 4:
+        level_emoji = "🧠"
+    else:
+        level_emoji = "💡"
+    
+    filled_emojis = "✅" * score
+    empty_emojis = "⬜" * (total_goals - score)
+    
+    st.markdown(f"**Progresso até o Título:** {level_emoji} {filled_emojis}{empty_emojis}")
+    st.progress(score / total_goals)
+
+
+# --- Layout do Aplicativo Streamlit ---
+
+init_session_state()
+
+st.set_page_config(
+    page_title="DESAFIO DA MATEMÁTICA",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# Título Principal com Estilo Aprimorado
+st.markdown("""
+    <style>
+        .main-title {
+            text-align: center;
+            color: #1E90FF; /* Azul forte */
+            text-shadow: 3px 3px 6px #000000; /* Sombra mais escura */
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            font-weight: 900;
+        }
+        .timer-box {
+            background-color: #DC143C; /* Vermelho escuro */
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.8em;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+    </style>
+    <h1 class="main-title">DESAFIO DA MATEMÁTICA</h1>
+    """, unsafe_allow_html=True)
+st.markdown("---")
+
+# Área de Entrada do Nome do Usuário
+if not st.session_state.name:
+    st.header("Modo de Dificuldade Extrema!")
+    
+    # Banner Principal com Gradiente e Cores Fortes (Aprimorado)
+    st.markdown("""
+    <div style='
+        padding: 30px; 
+        border-radius: 15px; 
+        background: linear-gradient(135deg, #FF4B4B 0%, #FFD700 100%);
+        text-align: center;
+        margin-bottom: 40px;
+        box-shadow: 6px 6px 15px rgba(0,0,0,0.4);
+        color: white;
+        border: 2px solid white;
+    '>
+        <h2 style='color: white; margin: 0; text-shadow: 2px 2px 5px rgba(0,0,0,0.6); font-size: 2em;'>🧠 ULTIMATE CHALLENGE ATIVADO 🚀</h2>
+        <p style='margin: 15px 0 0 0; font-size: 20px; font-weight: bold;'>
+            Prove ser o Mestre da Ordem de Operações. Cada acerto dobra a dificuldade!
+        </p>
+    </div>
+    """, unsafe_allow_html=True) 
+
+    with st.form(key='name_form'):
+        name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
+        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
+        
+        if submit_button and name_input:
+            st.session_state.name = name_input.title().strip()
+            st.success(f"Impressionante coragem, **{st.session_state.name}**! Preparado para a Ordem de Operações?")
+            st.session_state.game_started = True
+            
+            reset_game() 
+            # O Streamlit lida com a re-renderização após o form.
+            
+        elif submit_button and not name_input:
+            st.warning("Por favor, digite seu nome para começar.")
+
+# --- Lógica do Jogo ---
+
+elif st.session_state.game_started and st.session_state.score < 10:
+    # ----------------------------------------
+    # CHAMADA PRINCIPAL DO TEMPORIZADOR
+    start_timer()
+    # ----------------------------------------
+    
+    st.markdown("---")
+    
+    # Novo Layout com Cronômetro, Score e Dificuldade
+    col_timer, col_score, col_difficulty = st.columns([1.5, 1, 1])
+
+    # 1. Cronômetro (Design Aprimorado)
+    col_timer.markdown(f"<div class='timer-box'>⏰ {st.session_state.time_remaining}s</div>", unsafe_allow_html=True)
+    
+    # 2. Score
+    col_score.markdown(f"<div style='background-color: #4CAF50; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; color: white; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);'>SCORE: {st.session_state.score} 🥇</div>", unsafe_allow_html=True)
+    
+    # 3. Dificuldade
+    col_difficulty.markdown(f"<div style='background-color: #FFA500; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; color: white; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);'>DIFICULDADE: {min(st.session_state.level_max_value, 10000)} ⚙️</div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    get_progress_bar(st.session_state.score)
+
+    st.warning(f"**LEMBRE-SE:** Priorize os parênteses `()`. A dificuldade é extrema! Boa sorte, Mestre **{st.session_state.name}**.")
+    
+    st.markdown("---")
+    st.markdown("<h4 style='text-align: center; color: #DC143C;'>🎯 O Desafio da Vez é...</h4>", unsafe_allow_html=True)
+    
+    if st.session_state.question:
+        question_text, _ = st.session_state.question
+        
+        # Pergunta em Destaque (Design Aprimorado)
+        st.markdown(f"""
+        <div style='
+            background-color: #F8F8FF; /* Ghost White */
+            padding: 30px; 
+            border-radius: 15px; 
+            text-align: center; 
+            border: 4px solid #1E90FF; /* Azul Destaque */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        '>
+            <h1 style='margin: 0; font-size: 2.5em; color: #333333;'>**{question_text}** = ?</h1>
+        </div>
+        """, unsafe_allow_html=True) 
+
+        
+        st.markdown("---")
+        
+        with st.form(key='quiz_form'):
+            answer_input = st.number_input(
+                "Sua Resposta (Inteiro):", 
+                min_value=-99999999, 
+                step=1, 
+                key="user_input", 
+                value=st.session_state.user_input, 
+                help="Digite sua resposta e clique em 'Enviar'."
+            )
+            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
+            
+    # Mensagem de Citação Histórica Colorida (Design Aprimorado)
+    st.markdown("---")
+    st.markdown(f"""
+    <div style='
+        padding: 15px; 
+        border-radius: 10px; 
+        background-color: #E6E6FA; /* Lavander */
+        color: #483D8B; /* Dark Slate Blue */
+        font-weight: bold;
+        text-align: center;
+        font-style: italic;
+        border-left: 5px solid #1E90FF;
+    '>
+        📜 CITAÇÃO: {st.session_state.current_tip}
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- Fim de Jogo (Vitória ou Derrota) ---
+
+elif st.session_state.score == 10:
+    st.balloons()
+    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! **{st.session_state.name}**, você DOMINOU a Matemática!")
+    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE! Seu nome entra para a história.")
+    
+    if st.button("Tentar Novamente (Recomeçar Desafio)"):
+        st.session_state.game_started = True
+        reset_game()
+        st.rerun()
+
+elif st.session_state.name and st.session_state.last_attempt_correct == False:
+    st.error(f"## 💔 Falha Crítica, **{st.session_state.name}**.")
+    st.markdown(f"Você errou a última questão ou o **Tempo Esgotou**. Sua pontuação final foi de **{st.session_state.score} acertos**.")
+    st.markdown("O desafio é real. A Ordem de Operações exige precisão sob pressão. Clique para tentar de novo e superar seu recorde!")
+    
+    if st.button("Tentar Novamente (Recomeçar Desafio)"):
+        st.session_state.game_started = True
+        reset_game()
+        st.rerun()
+
+elif st.session_state.name and not st.session_state.game_started:
+    st.markdown("---")
+    st.markdown(f"### Olá, **{st.session_state.name}**!")
+    st.info("Você está no lobby. Quando estiver pronto, aperte o botão para receber a primeira questão com o temporizador ativado.")
+    if st.button("Iniciar Desafio da Matemática"):
+        st.session_state.game_started = True
+        reset_game()
+        st.rerun()
