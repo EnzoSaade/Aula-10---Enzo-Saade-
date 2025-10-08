@@ -84,8 +84,7 @@ okabe_image_url = "https://placehold.co/600x400/000000/ffffff?text=OKABE%20RINTA
 
 st.image(
     okabe_image_url,
-    caption="El Psy Congroo!",
-    width=None
+    caption="El Psy Congroo!"
 )
 st.markdown(
     """
