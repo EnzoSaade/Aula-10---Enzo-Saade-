@@ -263,31 +263,4 @@ if not st.session_state.name:
         if submit_button and name_input:
             st.session_state.name = name_input.title().strip()
             st.session_state.game_started = True
-            st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de Operações?")
-            
-            reset_game() 
-            
-        elif submit_button and not name_input:
-            st.warning("Por favor, digite seu nome para começar.")
-
-# --- Lógica do Jogo ---
-
-elif st.session_state.game_started and st.session_state.score < 10:
-    # Jogo em andamento
-
-    st.markdown("---")
-    st.markdown(f"### Mãos à obra, **{st.session_state.name}**! 🔢")
-    
-    get_progress_bar(st.session_state.score)
-    
-    st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
-    
-    # Métricas Destacadas
-    col1, col2 = st.columns(2)
-    col1.markdown(f"<div style='background-color: #E6E6FA; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold;'>SCORE: {st.session_state.score} 🥇</div>", unsafe_allow_html=True)
-    col2.markdown(f"<div style='background-color: #ADD8E6; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold;'>DIFICULDADE: {min(st.session_state.level_max_value, 10000)} ⚙️</div>", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.markdown("<h4 style='text-align: center; color: #DC143C;'>🎯 O Desafio da Vez é...</h4>", unsafe_allow_html=True)
-    
-    if
+            st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de
