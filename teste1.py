@@ -243,24 +243,4 @@ if not st.session_state.name:
     <div style='
         padding: 20px; 
         border-radius: 12px; 
-        background: linear-gradient(135deg, #FF4B4B 0%, #FFD700 100%);
-        text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.3);
-        color: white;
-    '>
-        <h2 style='color: white; margin: 0; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);'>🧠 ULTIMATE CHALLENGE ATIVADO 🚀</h2>
-        <p style='margin: 10px 0 0 0; font-size: 18px; font-weight: bold;'>
-            Prove ser o Mestre da Ordem de Operações.
-        </p>
-    </div>
-    """, unsafe_allow_html=True) 
-
-    with st.form(key='name_form'):
-        name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
-        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
-        
-        if submit_button and name_input:
-            st.session_state.name = name_input.title().strip()
-            st.session_state.game_started = True
-            st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de
+        background: linear-gradient(135deg, #FF4B4B 0%, #FFD700
