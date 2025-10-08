@@ -113,7 +113,8 @@ def handle_user_input(user_prompt):
         
     elif current_step > 0 and current_step < len(DIALOGO):
         # Passos 1 a 3: Validação de respostas
-        estado_atual = DIALOGO[current_step - 1]
+        # CORREÇÃO: Usar current_step diretamente, pois ele indica o índice da pergunta sendo respondida.
+        estado_atual = DIALOGO[current_step]
         respostas_validas = estado_atual["resposta_correta"]
         
         # Normaliza a entrada do usuário para comparação
@@ -194,9 +195,11 @@ if st.session_state.dialogo_step < len(DIALOGO):
 
 else:
     # Quando o diálogo termina, exibe o encerramento no chat
-    if st.session_state.messages[-1]["role"] != "assistant" or st.session_state.messages[-1]["content"] != get_dialogo_message(len(DIALOGO)):
+    # Garantir que a mensagem final seja exibida apenas uma vez
+    if not st.session_state.messages or st.session_state.messages[-1]["content"] != get_dialogo_message(len(DIALOGO)):
         final_message = get_dialogo_message(len(DIALOGO))
         st.session_state.messages.append({"role": "assistant", "content": final_message})
         st.chat_message("assistant").markdown(final_message)
     
     st.markdown(f"### 🎉 **Parabéns, {st.session_state.nome}! Diálogo Concluído.** 🎉")
+
