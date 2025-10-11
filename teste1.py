@@ -2,7 +2,7 @@ import streamlit as st
 import random
 import operator
 import math 
-import time
+# import time # REMOVIDO: time.sleep(0.5) removido, então time não é mais estritamente necessário
 
 # Mapeamento de operadores para facilitar o cálculo
 ops = {
@@ -89,15 +89,20 @@ def reset_game():
     generate_new_question()
 
 def generate_new_question():
-    """Gera uma nova questão com regras de precedência e parênteses."""
+    """
+    Gera uma nova questão com regras de precedência e parênteses.
+    A dificuldade e os operadores disponíveis são baseados no score.
+    A lógica de geração de divisão foi melhorada para robustez.
+    """
     
     score = st.session_state.score
     
+    # Lógica de dificuldade
     st.session_state.level_max_value = int(10 * (4.0 ** score))
-    
     max_val = st.session_state.level_max_value
     limit = min(max_val, 10000)
     
+    # Lógica de operadores disponíveis
     available_ops = ['+', '+'] 
     if score >= 3:
         available_ops.append('-') 
@@ -108,65 +113,107 @@ def generate_new_question():
     
     
     if score >= 6:
+        # Operações com parênteses (3 termos: (N1 op1 N2) op2 N3)
         op1 = random.choice(available_ops)
-        op2 = random.choice([op for op in available_ops if op != '/'])
+        # op2 não pode ser divisão para garantir resultado final inteiro e evitar float/int
+        op2 = random.choice([op for op in available_ops if op != '/']) 
         
-        num1 = random.randint(10, limit)
-        num2 = random.randint(1, limit)
-        num3 = random.randint(1, int(limit / 10)) 
-        
-        if op1 == '-':
-            if num1 < num2: num1, num2 = num2, num1
-            result_part_1 = ops[op1](num1, num2)
+        # Tenta gerar números até 5 vezes para garantir que a divisão seja exata
+        # e que os números não sejam absurdamente grandes.
+        try_count = 0
+        while try_count < 5: 
+            try_count += 1
             
-        elif op1 == '/':
-            divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if num1 % n == 0])
-            num2 = divisor
-            result_part_1 = int(ops[op1](num1, num2))
+            num1 = random.randint(10, limit)
+            num2 = random.randint(1, limit)
+            # Garante num3 >= 1, mesmo para limites muito baixos (para evitar erro de divisão por zero na lógica 'or 1')
+            num3 = random.randint(1, int(limit / 10) or 1) 
             
-        else: # '+' ou '*'
-            result_part_1 = ops[op1](num1, num2)
+            result_part_1 = None
+            
+            if op1 == '-':
+                if num1 < num2: num1, num2 = num2, num1
+                result_part_1 = ops[op1](num1, num2)
+                
+            elif op1 == '/':
+                # Geração mais robusta para (N1 / N2)
+                if num2 == 0: continue
+                
+                # Escolhe um divisor seguro (num2)
+                temp_num2 = random.randint(2, min(int(math.sqrt(limit)) + 1, 100) or 2)
+                
+                # Garante que num1 seja um múltiplo do divisor
+                if num1 % temp_num2 != 0:
+                    num1 = (num1 // temp_num2) * temp_num2
+                
+                # Verifica se num1 ainda é válido
+                if num1 == 0 or num1 > limit: continue
+                num2 = temp_num2
+                result_part_1 = int(ops[op1](num1, num2))
+                
+            else: # '+' ou '*'
+                result_part_1 = ops[op1](num1, num2)
 
-        question_text = f"({num1} {op1} {num2}) {op2} {num3}"
-        
-        if op2 == '+':
-            answer = result_part_1 + num3
-        elif op2 == '-':
-            answer = result_part_1 - num3
-        else: # op2 == '*'
-            answer = result_part_1 * num3
+            # Garante que a primeira parte é um inteiro antes de calcular o resultado final
+            result_part_1 = int(result_part_1) 
             
-        if abs(answer) > 1000000:
-            return generate_new_question() 
-            
+            # Calcula a resposta final
+            if op2 == '+':
+                answer = result_part_1 + num3
+            elif op2 == '-':
+                answer = result_part_1 - num3
+            else: # op2 == '*'
+                answer = result_part_1 * num3
+                
+            # Evita números absurdamente grandes
+            if abs(answer) <= 1000000:
+                question_text = f"({num1} {op1} {num2}) {op2} {num3}"
+                st.session_state.question = (question_text, answer)
+                st.session_state.current_tip = get_random_quote()
+                return # Questão gerada com sucesso
+
+        # Se falhar após 5 tentativas, tenta novamente (recursão segura)
+        return generate_new_question()
+
     else:
+        # Operações de 2 termos
         op1 = random.choice(available_ops)
         
-        num1 = random.randint(1, limit)
-        num2 = random.randint(1, limit)
-        
-        if op1 == '-':
+        # Tratamento especial para Divisão
+        if op1 == '/':
+            # Garantir divisão exata e num1 < limit
+            
+            # Escolhe o quociente (resposta) e divisor (num2)
+            # Limite o quociente para que num1 não exceda 'limit' facilmente
+            answer = random.randint(1, limit // 2 if limit > 1 else 1)
+            num2 = random.randint(2, min(100, limit) or 2) # Divisor seguro
+            num1 = answer * num2
+            
+            if num1 > limit: # Se o dividendo exceder o limite, recalcula
+                return generate_new_question()
+                
+            answer = int(ops[op1](num1, num2))
+
+        elif op1 == '-':
+            num1 = random.randint(1, limit)
+            num2 = random.randint(1, limit)
             if num1 < num2: num1, num2 = num2, num1
             answer = ops[op1](num1, num2)
             
-        elif op1 == '/':
-            divisor = random.choice([n for n in range(2, int(math.sqrt(limit)) + 1) if limit % n == 0])
-            num2 = divisor
-            num1 = random.randint(1, int(limit / divisor)) * divisor
-            answer = int(ops[op1](num1, num2))
-            
         else: # '+' ou '*'
+            num1 = random.randint(1, limit)
+            num2 = random.randint(1, limit)
             answer = ops[op1](num1, num2)
-        
+            
         question_text = f"{num1} {op1} {num2}"
 
-    st.session_state.question = (question_text, answer)
+    st.session_state.question = (question_text, int(answer)) # Garante que a resposta seja INT
     
     st.session_state.current_tip = get_random_quote()
 
 
 def check_answer():
-    """Verifica a resposta do usuário."""
+    """Verifica a resposta do usuário. CORREÇÃO: Removido time.sleep e ajustada a lógica de vitória."""
     user_input = st.session_state.user_input
     
     if st.session_state.question is None:
@@ -183,14 +230,18 @@ def check_answer():
             
             st.balloons()
             
+            # Lógica corrigida: Se score < 10, gera próxima pergunta. Se score == 10, vai para o bloco de vitória no layout.
             if st.session_state.score < 10:
                 st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
                 
                 st.session_state.user_input = 0 
                 
-                time.sleep(0.5) 
+                # time.sleep(0.5) REMOVIDO: Evita problemas de re-renderização do Streamlit.
+                
                 generate_new_question()
             else:
+                # Caso de vitória (score == 10). Permite que o Streamlit redesenhe para o bloco de vitória.
+                st.session_state.user_input = 0
                 pass 
             
         else:
@@ -293,7 +344,7 @@ elif st.session_state.game_started and st.session_state.score < 10:
     if st.session_state.question:
         question_text, _ = st.session_state.question
         
-        # Pergunta em Destaque (Fundo) (CORRIGIDO: A string tripla de fechamento foi garantida aqui.)
+        # Pergunta em Destaque (Fundo)
         st.markdown(f"""
         <div style='
             background-color: #FFFACD; 
@@ -304,7 +355,7 @@ elif st.session_state.game_started and st.session_state.score < 10:
         '>
             <h1 style='margin: 0;'>**{question_text}** = ?</h1>
         </div>
-        """, unsafe_allow_html=True) # <--- O fechamento estava faltando ou desalinhado
+        """, unsafe_allow_html=True) 
 
         
         st.markdown("---")
