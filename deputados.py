@@ -12,7 +12,7 @@ def load_data(url):
     try:
         # Tenta carregar o arquivo
         data = pd.read_csv(url)
-        # Converte nomes de colunas para minúsculas para facilitar a busca
+        # Converte nomes de colunas para minúsculas (mantendo a consistência)
         data.columns = data.columns.str.lower()
         return data
     except Exception as e:
@@ -24,20 +24,22 @@ df = load_data(DATA_URL)
 
 if not df.empty:
     
-    # 1. Identificação da Coluna (Corrigindo o KeyError)
-    # Assumindo que a coluna correta é 'sgpartido' (depois da conversão para minúsculas)
-    NOME_COLUNA_PARTIDO = 'sgpartido' 
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Usando o nome correto da coluna, conforme as colunas disponíveis no seu DataFrame.
+    NOME_COLUNA_PARTIDO = 'partido' 
+    # ------------------------------
     
+    # Confirma se a coluna existe após a conversão para minúsculas
     if NOME_COLUNA_PARTIDO not in df.columns:
-        st.error(f"Coluna '{NOME_COLUNA_PARTIDO}' não encontrada. Colunas disponíveis: {df.columns.tolist()}")
+        st.error(f"Coluna '{NOME_COLUNA_PARTIDO}' ainda não encontrada. Por favor, verifique o nome exato.")
     else:
         # --- Preparação dos Dados para o Gráfico ---
         
-        # 2. Contar a frequência de cada partido
+        # 1. Contar a frequência de cada partido
         contagem_partidos = df[NOME_COLUNA_PARTIDO].value_counts().reset_index()
         contagem_partidos.columns = ['Partido', 'Número de Deputados']
 
-        # 3. Criar o Gráfico de Barras Interativo com Plotly Express
+        # 2. Criar o Gráfico de Barras Interativo com Plotly Express
         fig = px.bar(
             contagem_partidos,
             x='Número de Deputados', 
@@ -49,11 +51,13 @@ if not df.empty:
             text='Número de Deputados'
         )
 
-        # 4. Otimização visual do layout
+        # 3. Otimização visual do layout
         fig.update_layout(
             xaxis_title="Número de Deputados",
             yaxis_title="Partido Político",
-            yaxis={'categoryorder':'total ascending'} # Ordena as barras da menor para a maior
+            yaxis={'categoryorder':'total ascending'}, # Ordena as barras da menor para a maior
+            uniformtext_minsize=8, # Adiciona texto com valor nas barras
+            uniformtext_mode='hide'
         )
 
         # --- Exibir o Gráfico no Streamlit ---
@@ -62,4 +66,4 @@ if not df.empty:
         st.subheader("Tabela de Contagem")
         st.dataframe(contagem_partidos, hide_index=True)
 
-        st.caption("Fonte dos dados: IRDX (Deputados 2022). Se o erro persistir, verifique a ortografia da coluna no CSV original.")
+        st.caption("Fonte dos dados: IRDX (Deputados 2022).")
