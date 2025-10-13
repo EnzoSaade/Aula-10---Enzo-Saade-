@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import ploty.expres as px
+import plotly.expres as px
 
 dataset = pd.read_csv('https://www.irdx.com.br/media/uploads/paises.csv')
 
