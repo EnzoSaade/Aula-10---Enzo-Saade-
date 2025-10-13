@@ -2,60 +2,64 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px 
 
-# Configurações iniciais do Streamlit
-st.set_page_config(layout="centered") 
-st.title("Distribuição de Deputados Federais por Partido Político")
+st.set_page_config(layout="centered", page_title="Deputados Federais") 
+st.title("🏛️ Distribuição de Deputados Federais por Partido Político")
 
 # Carregar os dados
-# O Streamlit tem um cache para carregar dados que não mudam, o que otimiza o desempenho
 @st.cache_data
 def load_data(url):
     """Carrega os dados de um CSV e retorna um DataFrame."""
     try:
+        # Tenta carregar o arquivo
         data = pd.read_csv(url)
+        # Converte nomes de colunas para minúsculas para facilitar a busca
+        data.columns = data.columns.str.lower()
         return data
     except Exception as e:
-        st.error(f"Erro ao carregar os dados: {e}")
-        return pd.DataFrame() # Retorna um DataFrame vazio em caso de erro
+        st.error(f"Erro ao carregar os dados. Verifique a URL ou o formato do arquivo: {e}")
+        return pd.DataFrame() 
 
 DATA_URL = 'https://www.irdx.com.br/media/uploads/deputados_2022.csv'
 df = load_data(DATA_URL)
 
 if not df.empty:
-    # --- Preparação dos Dados para o Gráfico ---
+    
+    # 1. Identificação da Coluna (Corrigindo o KeyError)
+    # Assumindo que a coluna correta é 'sgpartido' (depois da conversão para minúsculas)
+    NOME_COLUNA_PARTIDO = 'sgpartido' 
+    
+    if NOME_COLUNA_PARTIDO not in df.columns:
+        st.error(f"Coluna '{NOME_COLUNA_PARTIDO}' não encontrada. Colunas disponíveis: {df.columns.tolist()}")
+    else:
+        # --- Preparação dos Dados para o Gráfico ---
+        
+        # 2. Contar a frequência de cada partido
+        contagem_partidos = df[NOME_COLUNA_PARTIDO].value_counts().reset_index()
+        contagem_partidos.columns = ['Partido', 'Número de Deputados']
 
-    # 1. Contar a frequência de cada partido político na coluna 'PARTIDO'
-    # Esta operação conta quantos deputados cada partido tem.
-    contagem_partidos = df['PARTIDO'].value_counts().reset_index()
-    contagem_partidos.columns = ['Partido', 'Número de Deputados']
+        # 3. Criar o Gráfico de Barras Interativo com Plotly Express
+        fig = px.bar(
+            contagem_partidos,
+            x='Número de Deputados', 
+            y='Partido',             
+            orientation='h',         
+            title='Contagem de Deputados por Partido Político',
+            color='Número de Deputados', 
+            color_continuous_scale=px.colors.sequential.Plotly3,
+            text='Número de Deputados'
+        )
 
-    # 2. Criar o Gráfico de Barras Interativo com Plotly Express
-    # Usaremos um gráfico de barras para visualizar a contagem.
-    fig = px.bar(
-        contagem_partidos,
-        x='Número de Deputados', # Eixo X: O número de deputados (valor)
-        y='Partido',             # Eixo Y: O nome do partido (categoria)
-        orientation='h',         # Gráfico de barras horizontal para melhor leitura dos nomes dos partidos
-        title='Contagem de Deputados Federais por Partido Político',
-        color='Número de Deputados', # Colore as barras pela quantidade
-        color_continuous_scale=px.colors.sequential.Viridis, # Escolha de cores
-        text='Número de Deputados' # Exibe o valor do número de deputados na barra
-    )
+        # 4. Otimização visual do layout
+        fig.update_layout(
+            xaxis_title="Número de Deputados",
+            yaxis_title="Partido Político",
+            yaxis={'categoryorder':'total ascending'} # Ordena as barras da menor para a maior
+        )
 
-    # Otimização visual do layout do gráfico
-    fig.update_layout(
-        xaxis_title="Número de Deputados",
-        yaxis_title="Partido Político",
-        yaxis={'categoryorder':'total ascending'} # Ordena as barras da menor para a maior contagem
-    )
+        # --- Exibir o Gráfico no Streamlit ---
+        st.plotly_chart(fig, use_container_width=True)
 
-    # --- Exibir o Gráfico e a Tabela no Streamlit ---
+        st.subheader("Tabela de Contagem")
+        st.dataframe(contagem_partidos, hide_index=True)
 
-    # Exibe o gráfico interativo
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Exibe a tabela de dados brutos (opcional, para visualização)
-    st.subheader("Dados Agregados")
-    st.dataframe(contagem_partidos)
-
-    st.caption("Fonte dos dados: IRDX (Deputados 2022)")
+        st.caption("Fonte dos dados: IRDX (Deputados 2022). Se o erro persistir, verifique a ortografia da coluna no CSV original.")
