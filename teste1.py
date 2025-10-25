@@ -1,289 +1,234 @@
 import streamlit as st
 import requests
 import pandas as pd
-from typing import List, Dict, Any, Optional
+import locale
+from datetime import datetime
 
-API_BASE = "https://dadosabertos.camara.leg.br/api/v2"
+# --- Configuração e Formatação ---
 
-st.set_page_config(page_title="Deputados - Despesas e Comissões", layout="wide")
+# Define a localização para formatação monetária (Brasil)
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except locale.Error:
+    pass # Ignora se não conseguir configurar (comum em alguns ambientes online)
 
+def formatar_moeda(valor):
+    """Formata um valor numérico para o padrão monetário BRL (R$)"""
+    try:
+        # Tenta usar o locale
+        return locale.currency(valor, grouping=True)
+    except:
+        # Retorna formatação manual se o locale falhar
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-@st.cache_data(ttl=60 * 60)
-def buscar_deputados(nome: str, itens: int = 50) -> List[Dict[str, Any]]:
+# --- Funções de API ---
+
+@st.cache_data(ttl=3600)
+def buscar_deputados(nome):
     """Busca deputados por nome na API da Câmara"""
-    url = f"{API_BASE}/deputados"
-    params = {"nome": nome, "ordem": "ASC", "ordenarPor": "nome", "itens": itens}
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        return r.json().get("dados", [])
-    except requests.RequestException as e:
-        st.error(f"Erro na conexão ao buscar deputados: {e}")
+    if not nome:
         return []
-
-
-@st.cache_data(ttl=60 * 60)
-def obter_detalhes_deputado(id_deputado: int) -> Optional[Dict[str, Any]]:
-    url = f"{API_BASE}/deputados/{id_deputado}"
+    url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
+    params = {"nome": nome, "ordem": "ASC", "ordenarPor": "nome"}
     try:
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        return r.json().get("dados")
-    except requests.RequestException as e:
-        st.error(f"Erro ao buscar detalhes do deputado: {e}")
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json().get("dados", [])
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro na conexão ao buscar deputados: {e}")
         return None
 
-
-@st.cache_data(ttl=30 * 60)
-def obter_despesas_deputado(id_deputado: int, ano: int = 2023, mes: Optional[int] = None, limite: int = 100) -> List[Dict[str, Any]]:
-    url = f"{API_BASE}/deputados/{id_deputado}/despesas"
+@st.cache_data(ttl=3600)
+def obter_despesas_deputado(id_deputado, ano, mes=None, limite=1000):
+    """Obtém as despesas do deputado"""
+    url = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}/despesas"
+    
     params = {
         "ano": ano,
         "ordem": "DESC",
         "ordenarPor": "dataDocumento",
         "itens": limite
     }
-    if mes:
+
+    if mes and 1 <= mes <= 12:
         params["mes"] = mes
+
     try:
-        r = requests.get(url, params=params, timeout=15)
-        r.raise_for_status()
-        return r.json().get("dados", [])
-    except requests.RequestException as e:
-        st.error(f"Erro ao buscar despesas: {e}")
-        return []
-
-
-@st.cache_data(ttl=30 * 60)
-def obter_comissoes_deputado(id_deputado: int, itens: int = 100) -> List[Dict[str, Any]]:
-    url = f"{API_BASE}/deputados/{id_deputado}/orgaos"
-    params = {"itens": itens}
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        return r.json().get("dados", [])
-    except requests.RequestException as e:
-        st.error(f"Erro ao buscar comissões: {e}")
-        return []
-
-
-def despesas_para_df(despesas: List[Dict[str, Any]]) -> pd.DataFrame:
-    if not despesas:
-        return pd.DataFrame()
-    df = pd.DataFrame(despesas)
-    # Normalizar valorDocumento para float
-    if 'valorDocumento' in df.columns:
-        df['valorDocumento'] = pd.to_numeric(df['valorDocumento'], errors='coerce').fillna(0.0)
-    return df
-
-
-def calcular_total_despesas(despesas: List[Dict[str, Any]]) -> float:
-    if not despesas:
-        return 0.0
-    return sum(float(d.get('valorDocumento', 0) or 0) for d in despesas)
-
-
-def mostrar_info_basica(deputado: Dict[str, Any], detalhes: Optional[Dict[str, Any]]):
-    st.subheader(deputado.get("nome", "Nome não disponível"))
-    cols = st.columns(3)
-    cols[0].markdown(f"**Partido**: {deputado.get('siglaPartido','-')}")
-    cols[1].markdown(f"**UF**: {deputado.get('siglaUf','-')}")
-    cols[2].markdown(f"**ID**: {deputado.get('id','-')}")
-    st.write("---")
-    if detalhes:
-        st.markdown(f"- **Email**: {detalhes.get('email', 'Não disponível')}")
-        st.markdown(f"- **Situação**: {detalhes.get('situacao', 'Não disponível')}")
-        st.markdown(f"- **Condição Eleitoral**: {detalhes.get('condicaoEleitoral', 'Não disponível')}")
-        st.markdown(f"- **CPF**: {detalhes.get('cpf', 'Não disponível')}")
-        st.markdown(f"- **Data de Nascimento**: {detalhes.get('dataNascimento', 'Não disponível')}")
-        st.markdown(f"- **Escolaridade**: {detalhes.get('escolaridade', 'Não disponível')}")
-        st.markdown(f"- **Município de Nascimento**: {detalhes.get('municipioNascimento', 'Não disponível')}")
-
-
-def mostrar_despesas_ui(deputado_id: int, nome_deputado: str):
-    st.header(f"Despesas — {nome_deputado}")
-    col1, col2, col3 = st.columns([1, 1, 1])
-    ano = col1.number_input("Ano", min_value=2000, max_value=2100, value=2023, step=1)
-    mes = col2.selectbox("Mês (opcional)", options=["Todos", *list(range(1, 13))], index=0)
-    limite = col3.slider("Limite de registros", min_value=10, max_value=2000, value=200, step=10)
-
-    mes_param = None if mes == "Todos" else int(mes)
-
-    with st.spinner("Carregando despesas..."):
-        despesas = obter_despesas_deputado(deputado_id, ano=int(ano), mes=mes_param, limite=int(limite))
-    df = despesas_para_df(despesas)
-
-    if df.empty:
-        st.info("Nenhuma despesa encontrada para o período selecionado.")
-        return
-
-    total = df['valorDocumento'].sum() if 'valorDocumento' in df.columns else 0.0
-    st.metric("Total de Despesas (R$)", f"{total:,.2f}")
-    st.write(f"Registros exibidos: {len(df)}")
-
-    # Mostrar tabela principal
-    display_cols = ['dataDocumento', 'tipoDespesa', 'nomeFornecedor', 'valorDocumento']
-    present_cols = [c for c in display_cols if c in df.columns]
-    st.dataframe(df[present_cols].rename(columns={
-        'dataDocumento': 'Data',
-        'tipoDespesa': 'Tipo',
-        'nomeFornecedor': 'Fornecedor',
-        'valorDocumento': 'Valor (R$)'
-    }).sort_values(by='Valor (R$)', ascending=False), use_container_width=True)
-
-    # Agrupar por tipo de despesa e mostrar gráfico
-    if 'tipoDespesa' in df.columns and 'valorDocumento' in df.columns:
-        agrup = df.groupby('tipoDespesa', as_index=False)['valorDocumento'].sum().sort_values('valorDocumento', ascending=False).head(15)
-        agrup = agrup.rename(columns={'tipoDespesa': 'Tipo', 'valorDocumento': 'Total (R$)'})
-        st.bar_chart(data=agrup.set_index('Tipo')['Total (R$)'])
-
-
-def mostrar_comissoes_ui(deputado_id: int):
-    st.header("Comissões")
-    with st.spinner("Carregando comissões..."):
-        comissoes = obter_comissoes_deputado(deputado_id)
-    if not comissoes:
-        st.info("Nenhuma comissão encontrada ou erro ao carregar.")
-        return
-    df = pd.DataFrame(comissoes)
-    present = []
-    for c in ['siglaOrgao', 'nomeOrgao', 'titulo']:
-        if c in df.columns:
-            present.append(c)
-    if present:
-        st.dataframe(df[present].rename(columns={
-            'siglaOrgao': 'Sigla',
-            'nomeOrgao': 'Nome',
-            'titulo': 'Cargo/Título'
-        }), use_container_width=True)
-    else:
-        st.json(comissoes)
-
-
-def buscar_e_selecionar(nome_busca: str, label: str = "Selecione um deputado"):
-    deputados = buscar_deputados(nome_busca)
-    if not deputados:
-        st.warning("Nenhum deputado encontrado com esse nome.")
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json().get("dados", [])
+    except requests.exceptions.RequestException:
         return None
-    if len(deputados) == 1:
-        return deputados[0]
-    options = {f"{d['nome']} ({d.get('siglaPartido','')}/{d.get('siglaUf','')}) — id:{d['id']}": d for d in deputados}
-    escolha = st.selectbox(label, options=list(options.keys()))
-    return options.get(escolha)
 
+def calcular_total_despesas(despesas):
+    """Calcula o total das despesas e retorna o DataFrame processado."""
+    if not despesas:
+        return 0, pd.DataFrame()
+    
+    df = pd.DataFrame(despesas)
+    # Converte para numérico, tratando erros e NaN
+    df['valorDocumento'] = pd.to_numeric(df['valorDocumento'], errors='coerce').fillna(0)
+    total = df['valorDocumento'].sum()
+    
+    return total, df
+
+# --- Função Principal de Comparação ---
 
 def comparar_deputados_ui():
-    st.title("Comparar Despesas entre Deputados")
-    col1, col2 = st.columns(2)
-    nome1 = col1.text_input("Nome do primeiro deputado")
-    nome2 = col2.text_input("Nome do segundo deputado")
+    
+    st.title("⚖️ Comparação de Despesas entre Deputados Federais")
+    
+    # FRASE ALTERADA AQUI
+    st.markdown("POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA! 🇧🇷")
+    
+    # --- 1. Seleção de Deputados ---
+    col_dep1, col_dep2 = st.columns(2)
+    
+    deputado_selecionado1 = None
+    deputado_selecionado2 = None
 
-    ano = st.number_input("Ano", min_value=2000, max_value=2100, value=2023, step=1)
-    mes = st.selectbox("Mês (opcional)", options=["Todos", *list(range(1, 13))], index=0)
-    limite = st.slider("Limite por deputado", min_value=50, max_value=2000, value=1000, step=50)
-
-    if st.button("Comparar"):
-        if not nome1 or not nome2:
-            st.warning("Preencha os dois nomes.")
-            return
-        dep1 = buscar_e_selecionar(nome1, "Selecione o primeiro deputado")
-        dep2 = buscar_e_selecionar(nome2, "Selecione o segundo deputado")
-        if not dep1 or not dep2:
-            st.warning("Seleção inválida.")
-            return
-        if dep1['id'] == dep2['id']:
-            st.warning("Você selecionou o mesmo deputado duas vezes.")
-            return
-
-        mes_param = None if mes == "Todos" else int(mes)
-        with st.spinner("Carregando despesas dos deputados..."):
-            d1 = obter_despesas_deputado(dep1['id'], ano=int(ano), mes=mes_param, limite=int(limite))
-            d2 = obter_despesas_deputado(dep2['id'], ano=int(ano), mes=mes_param, limite=int(limite))
-
-        total1 = calcular_total_despesas(d1)
-        total2 = calcular_total_despesas(d2)
-
-        st.subheader("Resultados")
-        st.metric(f"{dep1['nome']}", f"R$ {total1:,.2f}")
-        st.metric(f"{dep2['nome']}", f"R$ {total2:,.2f}")
-
-        # Gráfico de comparação
-        comp_df = pd.DataFrame({
-            "Deputado": [dep1['nome'], dep2['nome']],
-            "Total (R$)": [total1, total2]
-        }).set_index("Deputado")
-        st.bar_chart(comp_df["Total (R$)"])
-
-        # Mostrar detalhes (10 primeiros) se o usuário quiser
-        if st.checkbox("Ver detalhamento (10 primeiras despesas de cada)"):
-            df1 = despesas_para_df(d1).head(10)
-            df2 = despesas_para_df(d2).head(10)
-            st.write(f"Despesas de {dep1['nome']}")
-            st.dataframe(df1[['dataDocumento', 'tipoDespesa', 'nomeFornecedor', 'valorDocumento']].rename(columns={
-                'dataDocumento': 'Data',
-                'tipoDespesa': 'Tipo',
-                'nomeFornecedor': 'Fornecedor',
-                'valorDocumento': 'Valor (R$)'
-            }), use_container_width=True)
-
-            st.write(f"Despesas de {dep2['nome']}")
-            st.dataframe(df2[['dataDocumento', 'tipoDespesa', 'nomeFornecedor', 'valorDocumento']].rename(columns={
-                'dataDocumento': 'Data',
-                'tipoDespesa': 'Tipo',
-                'nomeFornecedor': 'Fornecedor',
-                'valorDocumento': 'Valor (R$)'
-            }), use_container_width=True)
-
-
-def main():
-    st.title("🔎 Sistema de Informações de Deputados Federais")
-    st.sidebar.header("Navegação")
-    menu = st.sidebar.radio("Escolha uma seção", ["Buscar deputado", "Comparar deputados", "Sobre"])
-
-    if menu == "Buscar deputado":
-        st.header("Buscar e visualizar deputado")
-        nome = st.text_input("Digite o nome completo ou parte do nome do deputado")
-        if st.button("Buscar"):
-            if not nome:
-                st.warning("Digite um nome para busca.")
+    with col_dep1:
+        st.subheader("Deputado 1")
+        nome1 = st.text_input("Nome do 1º Deputado (Busca)", key="nome1")
+        
+        if nome1:
+            deputados1 = buscar_deputados(nome1)
+            if deputados1:
+                opcoes1 = {f"{d['nome']} ({d['siglaPartido']}/{d['siglaUf']})": d for d in deputados1}
+                escolha1 = st.selectbox("Selecione o deputado exato", options=list(opcoes1.keys()), key="select1")
+                deputado_selecionado1 = opcoes1.get(escolha1)
             else:
-                with st.spinner("Buscando deputados..."):
-                    deputados = buscar_deputados(nome)
-                if not deputados:
-                    st.info("Nenhum deputado encontrado.")
-                else:
-                    if len(deputados) == 1:
-                        deputado = deputados[0]
-                    else:
-                        options = {f"{d['nome']} ({d.get('siglaPartido','')}/{d.get('siglaUf','')}) — id:{d['id']}": d for d in deputados}
-                        escolha = st.selectbox("Resultados encontrados — selecione um", options=list(options.keys()))
-                        deputado = options[escolha]
+                st.info("Nenhum deputado encontrado.")
 
-                    detalhes = obter_detalhes_deputado(deputado['id'])
-                    mostrar_info_basica(deputado, detalhes)
-                    st.write("---")
-                    mostrar_despesas_ui(deputado['id'], deputado.get('nome', '---'))
-                    st.write("---")
-                    mostrar_comissoes_ui(deputado['id'])
+    with col_dep2:
+        st.subheader("Deputado 2")
+        nome2 = st.text_input("Nome do 2º Deputado (Busca)", key="nome2")
+        
+        if nome2:
+            deputados2 = buscar_deputados(nome2)
+            if deputados2:
+                opcoes2 = {f"{d['nome']} ({d['siglaPartido']}/{d['siglaUf']})": d for d in deputados2}
+                escolha2 = st.selectbox("Selecione o deputado exato", options=list(opcoes2.keys()), key="select2")
+                deputado_selecionado2 = opcoes2.get(escolha2)
+            else:
+                st.info("Nenhum deputado encontrado.")
 
-    elif menu == "Comparar deputados":
-        comparar_deputados_ui()
+    # Verifica se a comparação pode prosseguir
+    if not deputado_selecionado1 or not deputado_selecionado2:
+        st.warning("Aguardando a seleção de dois deputados.")
+        return
+    
+    if deputado_selecionado1['id'] == deputado_selecionado2['id']:
+        st.error("⚠️ Você selecionou o mesmo deputado duas vezes. Selecione dois diferentes.")
+        return
+        
+    st.markdown("---")
+        
+    # --- 2. Seleção do Período ---
+    st.subheader("🗓️ Período para Comparação")
+    
+    ano_padrao = datetime.now().year
+    anos_disponiveis = list(range(ano_padrao, ano_padrao - 5, -1))
+    
+    col_c_ano, col_c_mes = st.columns(2)
+    
+    ano = col_c_ano.selectbox("Ano", options=anos_disponiveis, key="comp_ano")
+    
+    meses_comp = {
+        None: "Todo o Ano", 1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro",
+        10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+    mes_nome = col_c_mes.selectbox("Mês", options=list(meses_comp.values()), key="comp_mes")
+    mes = [k for k, v in meses_comp.items() if v == mes_nome][0]
+
+    # --- 3. Busca de Dados e Processamento ---
+    
+    with st.spinner("⏳ Carregando despesas..."):
+        despesas1_raw = obter_despesas_deputado(deputado_selecionado1['id'], ano=ano, mes=mes)
+        despesas2_raw = obter_despesas_deputado(deputado_selecionado2['id'], ano=ano, mes=mes)
+    
+    if despesas1_raw is None or despesas2_raw is None:
+        st.error("❌ Erro ao carregar as despesas. Verifique a conexão com a API.")
+        return
+
+    total1, df1 = calcular_total_despesas(despesas1_raw)
+    total2, df2 = calcular_total_despesas(despesas2_raw)
+
+    # --- 4. Exibição da Comparação ---
+    st.markdown("## 📊 Resultado")
+    
+    col_res1, col_res2 = st.columns(2)
+    
+    # Total Deputado 1
+    with col_res1:
+        st.info(f"👤 **{deputado_selecionado1['nome']}** ({deputado_selecionado1['siglaPartido']}/{deputado_selecionado1['siglaUf']})")
+        st.metric("Total de Despesas", formatar_moeda(total1))
+        st.caption(f"Registros: {len(df1)}")
+
+    # Total Deputado 2
+    with col_res2:
+        st.info(f"👤 **{deputado_selecionado2['nome']}** ({deputado_selecionado2['siglaPartido']}/{deputado_selecionado2['siglaUf']})")
+        st.metric("Total de Despesas", formatar_moeda(total2))
+        st.caption(f"Registros: {len(df2)}")
+
+    st.markdown("### Análise")
+    diferenca = abs(total1 - total2)
+    
+    if total1 > total2:
+        vencedor = deputado_selecionado1
+        perdedor = deputado_selecionado2
+        percentual = ((total1 - total2) / total2 * 100) if total2 > 0 else "N/A"
+        msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
+        if total2 > 0:
+             msg += f" (Representa **{percentual:.1f}%** a mais)."
+        st.success(f"📈 {msg}")
+    elif total2 > total1:
+        vencedor = deputado_selecionado2
+        perdedor = deputado_selecionado1
+        percentual = ((total2 - total1) / total1 * 100) if total1 > 0 else "N/A"
+        msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
+        if total1 > 0:
+             msg += f" (Representa **{percentual:.1f}%** a mais)."
+        st.error(f"📉 {msg}")
     else:
-        st.header("Sobre")
-        st.markdown(
-            """
-            App criado para consultar a API de Dados Abertos da Câmara dos Deputados.
-            Funcionalidades:
-            - Buscar deputados por nome
-            - Exibir informações básicas e detalhes
-            - Listar e agregadar despesas por ano/mês
-            - Listar comissões
-            - Comparar despesas entre dois deputados
+        st.info("Ambos os deputados tiveram o mesmo total de despesas no período.")
+
+    # --- 5. Detalhamento em Tabela ---
+    st.markdown("### Detalhamento das Despesas (Registros)")
+    
+    col_tab1, col_tab2 = st.columns(2)
+
+    def display_dataframe(df, nome_deputado, col):
+        if df.empty:
+            col.info(f"Nenhuma despesa para {nome_deputado}.")
+            return
             
-            Desenvolvido a partir do script original enviado por você.
-            """
-        )
+        df_exibicao = df[['dataDocumento', 'tipoDespesa', 'nomeFornecedor', 'valorDocumento']].copy()
+        df_exibicao.rename(columns={
+            'dataDocumento': 'Data', 
+            'tipoDespesa': 'Tipo de Despesa', 
+            'nomeFornecedor': 'Fornecedor', 
+            'valorDocumento': 'Valor (R$)'
+        }, inplace=True)
+        
+        # Formatação final de moeda
+        df_exibicao['Valor (R$)'] = df_exibicao['Valor (R$)'].apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        
+        col.subheader(nome_deputado)
+        col.dataframe(df_exibicao, use_container_width=True)
 
+    with col_tab1:
+        display_dataframe(df1, deputado_selecionado1['nome'], col_tab1)
 
+    with col_tab2:
+        display_dataframe(df2, deputado_selecionado2['nome'], col_tab2)
+
+# --- Execução do App ---
 if __name__ == "__main__":
-    main()
+    st.set_page_config(
+        page_title="Comparação de Deputados",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    comparar_deputados_ui()
