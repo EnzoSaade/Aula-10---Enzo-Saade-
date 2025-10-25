@@ -79,7 +79,7 @@ def comparar_deputados_ui():
     st.title("⚖️ Comparação de Despesas entre Deputados Federais")
     
     # FRASE ALTERADA AQUI
-    st.markdown("POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA! 🇧🇷")
+    st.markdown("POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA! ")
     
     # --- 1. Seleção de Deputados ---
     col_dep1, col_dep2 = st.columns(2)
