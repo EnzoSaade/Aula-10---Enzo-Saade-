@@ -1,414 +1,232 @@
 import streamlit as st
-import random
-import operator
-import math 
-# import time # REMOVIDO: time.sleep(0.5) removido, então time não é mais estritamente necessário
+import requests
+import pandas as pd
+import locale
+from datetime import datetime
 
-# Mapeamento de operadores para facilitar o cálculo
-ops = {
-    '+': operator.add,
-    '-': operator.sub,
-    '*': operator.mul,
-    '/': operator.truediv,
-}
+# --- Configuração e Formatação ---
 
-# --- Lista de Frases de Matemáticos Históricos (AGORA COM MAIS OPÇÕES) ---
-HISTORICAL_MATH_QUOTES = [
-    "“A Matemática é o alfabeto com o qual Deus escreveu o universo.” — Galileu Galilei",
-    "“Onde há matéria, há geometria.” — Johannes Kepler",
-    "“Não se preocupe com suas dificuldades em Matemática. Posso garantir que as minhas são maiores.” — Albert Einstein",
-    "“Os números governam o universo.” — Pitágoras",
-    "“A essência da Matemática reside em sua liberdade.” — Georg Cantor",
-    "“A Matemática é a rainha das ciências e a Aritmética é a rainha da Matemática.” — Carl Friedrich Gauss",
-    "“Na Matemática não há caminhos reais.” — Euclides",
-    "“A imaginação é mais importante que o conhecimento.” — Albert Einstein",
-    "“Deus fez os números inteiros, todo o resto é obra do homem.” — Leopold Kronecker",
-    "“Existe geometria em todo o resplendor. Existe música em todas as esferas.” — Pitágoras",
-    "“Sem a paixão, não há gênio.” — Theodor Svedberg",
-    "“A ciência mais digna de ser estudada é a Matemática.” — Roger Bacon",
-    "“Se soubesse que o mundo acabaria amanhã, eu, hoje, plantaria uma macieira.” — Martinho Lutero (Citação popularmente associada ao conceito de certeza e esperança na ciência)",
-    "“Tudo é número.” — Pitágoras",
-    "“A ciência começa na Matemática.” — James Clerk Maxwell",
-]
+# Define a localização para formatação monetária (Brasil)
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except locale.Error:
+    pass # Ignora se não conseguir configurar (comum em alguns ambientes online)
 
-# --- Funções de Ajuda e Variáveis de Estado ---
+def formatar_moeda(valor):
+    """Formata um valor numérico para o padrão monetário BRL (R$)"""
+    try:
+        # Tenta usar o locale
+        return locale.currency(valor, grouping=True)
+    except:
+        # Retorna formatação manual se o locale falhar
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-def get_random_quote():
-    """Retorna uma citação aleatória, evitando repetição da última usada."""
+# --- Funções de API ---
+
+@st.cache_data(ttl=3600)
+def buscar_deputados(nome):
+    """Busca deputados por nome na API da Câmara"""
+    if not nome:
+        return []
+    url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
+    params = {"nome": nome, "ordem": "ASC", "ordenarPor": "nome"}
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json().get("dados", [])
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro na conexão ao buscar deputados: {e}")
+        return None
+
+@st.cache_data(ttl=3600)
+def obter_despesas_deputado(id_deputado, ano, mes=None, limite=1000):
+    """Obtém as despesas do deputado"""
+    url = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}/despesas"
     
-    # 1. Obtém o índice da última citação usada
-    last_index = st.session_state.get('last_quote_index', -1)
-    
-    # 2. Cria uma lista de índices que podem ser escolhidos (todos, exceto o último)
-    available_indices = [i for i in range(len(HISTORICAL_MATH_QUOTES)) if i != last_index]
-    
-    # 3. Se houver índices disponíveis, escolhe um novo
-    if available_indices:
-        new_index = random.choice(available_indices)
-    else:
-        # Se for a primeira vez ou se só houver uma citação, escolhe qualquer uma
-        new_index = random.randint(0, len(HISTORICAL_MATH_QUOTES) - 1)
-    
-    # 4. Salva o novo índice no estado da sessão
-    st.session_state.last_quote_index = new_index
-    
-    # 5. Retorna a citação correspondente
-    return HISTORICAL_MATH_QUOTES[new_index]
+    params = {
+        "ano": ano,
+        "ordem": "DESC",
+        "ordenarPor": "dataDocumento",
+        "itens": limite
+    }
 
-
-def init_session_state():
-    """Inicializa as variáveis de estado da sessão."""
-    if 'name' not in st.session_state:
-        st.session_state.name = ""
-    if 'score' not in st.session_state:
-        st.session_state.score = 0
-    if 'game_started' not in st.session_state:
-        st.session_state.game_started = False
-    if 'last_attempt_correct' not in st.session_state:
-        st.session_state.last_attempt_correct = None
-    if 'question' not in st.session_state:
-        st.session_state.question = None
-    if 'level_max_value' not in st.session_state:
-        st.session_state.level_max_value = 10 
-    if 'user_input' not in st.session_state:
-        st.session_state.user_input = 0
-    # Nova variável para rastrear a última citação
-    if 'last_quote_index' not in st.session_state:
-        st.session_state.last_quote_index = -1
-    
-    if 'current_tip' not in st.session_state:
-        st.session_state.current_tip = get_random_quote()
-
-def reset_game():
-    """Reinicia a pontuação e a dificuldade do jogo, e gera a primeira questão."""
-    st.session_state.score = 0
-    st.session_state.level_max_value = 10
-    st.session_state.last_attempt_correct = None
-    st.session_state.user_input = 0 
-    st.session_state.current_tip = get_random_quote() # Novo quote
-    generate_new_question()
-
-def generate_new_question():
-    """
-    Gera uma nova questão com regras de precedência e parênteses.
-    A dificuldade e os operadores disponíveis são baseados no score.
-    A lógica de geração de divisão foi melhorada para robustez.
-    """
-    
-    score = st.session_state.score
-    
-    # Lógica de dificuldade
-    st.session_state.level_max_value = int(10 * (4.0 ** score))
-    max_val = st.session_state.level_max_value
-    limit = min(max_val, 10000)
-    
-    # Lógica de operadores disponíveis
-    available_ops = ['+', '+'] 
-    if score >= 3:
-        available_ops.append('-') 
-    if score >= 5:
-        available_ops.append('*') 
-    if score >= 7:
-        available_ops.append('/') 
-    
-    
-    if score >= 6:
-        # Operações com parênteses (3 termos: (N1 op1 N2) op2 N3)
-        op1 = random.choice(available_ops)
-        # op2 não pode ser divisão para garantir resultado final inteiro e evitar float/int
-        op2 = random.choice([op for op in available_ops if op != '/']) 
-        
-        # Tenta gerar números até 5 vezes para garantir que a divisão seja exata
-        # e que os números não sejam absurdamente grandes.
-        try_count = 0
-        while try_count < 5: 
-            try_count += 1
-            
-            num1 = random.randint(10, limit)
-            num2 = random.randint(1, limit)
-            # Garante num3 >= 1, mesmo para limites muito baixos (para evitar erro de divisão por zero na lógica 'or 1')
-            num3 = random.randint(1, int(limit / 10) or 1) 
-            
-            result_part_1 = None
-            
-            if op1 == '-':
-                if num1 < num2: num1, num2 = num2, num1
-                result_part_1 = ops[op1](num1, num2)
-                
-            elif op1 == '/':
-                # Geração mais robusta para (N1 / N2)
-                if num2 == 0: continue
-                
-                # Escolhe um divisor seguro (num2)
-                temp_num2 = random.randint(2, min(int(math.sqrt(limit)) + 1, 100) or 2)
-                
-                # Garante que num1 seja um múltiplo do divisor
-                if num1 % temp_num2 != 0:
-                    num1 = (num1 // temp_num2) * temp_num2
-                
-                # Verifica se num1 ainda é válido
-                if num1 == 0 or num1 > limit: continue
-                num2 = temp_num2
-                result_part_1 = int(ops[op1](num1, num2))
-                
-            else: # '+' ou '*'
-                result_part_1 = ops[op1](num1, num2)
-
-            # Garante que a primeira parte é um inteiro antes de calcular o resultado final
-            result_part_1 = int(result_part_1) 
-            
-            # Calcula a resposta final
-            if op2 == '+':
-                answer = result_part_1 + num3
-            elif op2 == '-':
-                answer = result_part_1 - num3
-            else: # op2 == '*'
-                answer = result_part_1 * num3
-                
-            # Evita números absurdamente grandes
-            if abs(answer) <= 1000000:
-                question_text = f"({num1} {op1} {num2}) {op2} {num3}"
-                st.session_state.question = (question_text, answer)
-                st.session_state.current_tip = get_random_quote()
-                return # Questão gerada com sucesso
-
-        # Se falhar após 5 tentativas, tenta novamente (recursão segura)
-        return generate_new_question()
-
-    else:
-        # Operações de 2 termos
-        op1 = random.choice(available_ops)
-        
-        # Tratamento especial para Divisão
-        if op1 == '/':
-            # Garantir divisão exata e num1 < limit
-            
-            # Escolhe o quociente (resposta) e divisor (num2)
-            # Limite o quociente para que num1 não exceda 'limit' facilmente
-            answer = random.randint(1, limit // 2 if limit > 1 else 1)
-            num2 = random.randint(2, min(100, limit) or 2) # Divisor seguro
-            num1 = answer * num2
-            
-            if num1 > limit: # Se o dividendo exceder o limite, recalcula
-                return generate_new_question()
-                
-            answer = int(ops[op1](num1, num2))
-
-        elif op1 == '-':
-            num1 = random.randint(1, limit)
-            num2 = random.randint(1, limit)
-            if num1 < num2: num1, num2 = num2, num1
-            answer = ops[op1](num1, num2)
-            
-        else: # '+' ou '*'
-            num1 = random.randint(1, limit)
-            num2 = random.randint(1, limit)
-            answer = ops[op1](num1, num2)
-            
-        question_text = f"{num1} {op1} {num2}"
-
-    st.session_state.question = (question_text, int(answer)) # Garante que a resposta seja INT
-    
-    st.session_state.current_tip = get_random_quote()
-
-
-def check_answer():
-    """Verifica a resposta do usuário. CORREÇÃO: Removido time.sleep e ajustada a lógica de vitória."""
-    user_input = st.session_state.user_input
-    
-    if st.session_state.question is None:
-        return
-
-    _, correct_answer = st.session_state.question
+    if mes and 1 <= mes <= 12:
+        params["mes"] = mes
 
     try:
-        user_answer_num = int(user_input)
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json().get("dados", [])
+    except requests.exceptions.RequestException:
+        return None
+
+def calcular_total_despesas(despesas):
+    """Calcula o total das despesas e retorna o DataFrame processado."""
+    if not despesas:
+        return 0, pd.DataFrame()
+    
+    df = pd.DataFrame(despesas)
+    # Converte para numérico, tratando erros e NaN
+    df['valorDocumento'] = pd.to_numeric(df['valorDocumento'], errors='coerce').fillna(0)
+    total = df['valorDocumento'].sum()
+    
+    return total, df
+
+# --- Função Principal de Comparação ---
+
+def comparar_deputados_ui():
+    
+    st.title("⚖️ Comparação de Despesas entre Deputados Federais")
+    st.markdown("Insira os nomes de dois deputados para comparar os gastos com a Cota para Exercício da Atividade Parlamentar (CEAP).")
+    
+    # --- 1. Seleção de Deputados ---
+    col_dep1, col_dep2 = st.columns(2)
+    
+    deputado_selecionado1 = None
+    deputado_selecionado2 = None
+
+    with col_dep1:
+        st.subheader("Deputado 1")
+        nome1 = st.text_input("Nome do 1º Deputado (Busca)", key="nome1")
         
-        if user_answer_num == correct_answer:
-            st.session_state.score += 1
-            st.session_state.last_attempt_correct = True
-            
-            st.balloons()
-            
-            # Lógica corrigida: Se score < 10, gera próxima pergunta. Se score == 10, vai para o bloco de vitória no layout.
-            if st.session_state.score < 10:
-                st.success(f"Excelente, {st.session_state.name}! Resposta correta!")
-                
-                st.session_state.user_input = 0 
-                
-                # time.sleep(0.5) REMOVIDO: Evita problemas de re-renderização do Streamlit.
-                
-                generate_new_question()
+        if nome1:
+            deputados1 = buscar_deputados(nome1)
+            if deputados1:
+                opcoes1 = {f"{d['nome']} ({d['siglaPartido']}/{d['siglaUf']})": d for d in deputados1}
+                escolha1 = st.selectbox("Selecione o deputado exato", options=list(opcoes1.keys()), key="select1")
+                deputado_selecionado1 = opcoes1.get(escolha1)
             else:
-                # Caso de vitória (score == 10). Permite que o Streamlit redesenhe para o bloco de vitória.
-                st.session_state.user_input = 0
-                pass 
-            
-        else:
-            st.error(f"Resposta incorreta, {st.session_state.name} 😔. A resposta correta era **{correct_answer}**.")
-            st.session_state.last_attempt_correct = False
-            st.session_state.game_started = False 
-            
-    except ValueError:
-        st.warning("Por favor, digite apenas um número inteiro.")
+                st.info("Nenhum deputado encontrado.")
 
+    with col_dep2:
+        st.subheader("Deputado 2")
+        nome2 = st.text_input("Nome do 2º Deputado (Busca)", key="nome2")
+        
+        if nome2:
+            deputados2 = buscar_deputados(nome2)
+            if deputados2:
+                opcoes2 = {f"{d['nome']} ({d['siglaPartido']}/{d['siglaUf']})": d for d in deputados2}
+                escolha2 = st.selectbox("Selecione o deputado exato", options=list(opcoes2.keys()), key="select2")
+                deputado_selecionado2 = opcoes2.get(escolha2)
+            else:
+                st.info("Nenhum deputado encontrado.")
 
-def get_progress_bar(score):
-    """Cria uma barra de progresso visual baseada na pontuação."""
-    total_goals = 10
+    # Verifica se a comparação pode prosseguir
+    if not deputado_selecionado1 or not deputado_selecionado2:
+        st.warning("Aguardando a seleção de dois deputados.")
+        return
     
-    if score >= 7:
-        level_emoji = "🔥"
-    elif score >= 4:
-        level_emoji = "🧠"
+    if deputado_selecionado1['id'] == deputado_selecionado2['id']:
+        st.error("⚠️ Você selecionou o mesmo deputado duas vezes. Selecione dois diferentes.")
+        return
+        
+    st.markdown("---")
+        
+    # --- 2. Seleção do Período ---
+    st.subheader("🗓️ Período para Comparação")
+    
+    ano_padrao = datetime.now().year
+    anos_disponiveis = list(range(ano_padrao, ano_padrao - 5, -1))
+    
+    col_c_ano, col_c_mes = st.columns(2)
+    
+    ano = col_c_ano.selectbox("Ano", options=anos_disponiveis, key="comp_ano")
+    
+    meses_comp = {
+        None: "Todo o Ano", 1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro",
+        10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+    mes_nome = col_c_mes.selectbox("Mês", options=list(meses_comp.values()), key="comp_mes")
+    mes = [k for k, v in meses_comp.items() if v == mes_nome][0]
+
+    # --- 3. Busca de Dados e Processamento ---
+    
+    with st.spinner("⏳ Carregando despesas..."):
+        despesas1_raw = obter_despesas_deputado(deputado_selecionado1['id'], ano=ano, mes=mes)
+        despesas2_raw = obter_despesas_deputado(deputado_selecionado2['id'], ano=ano, mes=mes)
+    
+    if despesas1_raw is None or despesas2_raw is None:
+        st.error("❌ Erro ao carregar as despesas. Verifique a conexão com a API.")
+        return
+
+    total1, df1 = calcular_total_despesas(despesas1_raw)
+    total2, df2 = calcular_total_despesas(despesas2_raw)
+
+    # --- 4. Exibição da Comparação ---
+    st.markdown("## 📊 Resultado")
+    
+    col_res1, col_res2 = st.columns(2)
+    
+    # Total Deputado 1
+    with col_res1:
+        st.info(f"👤 **{deputado_selecionado1['nome']}** ({deputado_selecionado1['siglaPartido']}/{deputado_selecionado1['siglaUf']})")
+        st.metric("Total de Despesas", formatar_moeda(total1))
+        st.caption(f"Registros: {len(df1)}")
+
+    # Total Deputado 2
+    with col_res2:
+        st.info(f"👤 **{deputado_selecionado2['nome']}** ({deputado_selecionado2['siglaPartido']}/{deputado_selecionado2['siglaUf']})")
+        st.metric("Total de Despesas", formatar_moeda(total2))
+        st.caption(f"Registros: {len(df2)}")
+
+    st.markdown("### Análise")
+    diferenca = abs(total1 - total2)
+    
+    if total1 > total2:
+        vencedor = deputado_selecionado1
+        perdedor = deputado_selecionado2
+        percentual = ((total1 - total2) / total2 * 100) if total2 > 0 else "N/A"
+        msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
+        if total2 > 0:
+             msg += f" (Representa **{percentual:.1f}%** a mais)."
+        st.success(f"📈 {msg}")
+    elif total2 > total1:
+        vencedor = deputado_selecionado2
+        perdedor = deputado_selecionado1
+        percentual = ((total2 - total1) / total1 * 100) if total1 > 0 else "N/A"
+        msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
+        if total1 > 0:
+             msg += f" (Representa **{percentual:.1f}%** a mais)."
+        st.error(f"📉 {msg}")
     else:
-        level_emoji = "💡"
+        st.info("Ambos os deputados tiveram o mesmo total de despesas no período.")
+
+    # --- 5. Detalhamento em Tabela ---
+    st.markdown("### Detalhamento das Despesas (Registros)")
     
-    filled_emojis = "✅" * score
-    empty_emojis = "⬜" * (total_goals - score)
-    
-    st.markdown(f"**Progresso até o Título:** {level_emoji} {filled_emojis}{empty_emojis}")
-    st.progress(score / total_goals)
+    col_tab1, col_tab2 = st.columns(2)
 
-
-# --- Layout do Aplicativo Streamlit ---
-
-init_session_state()
-
-st.set_page_config(
-    page_title="DESAFIO DA MATEMÁTICA",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
-
-# Título Colorido
-st.markdown("<h1 style='text-align: center; color: #1E90FF; text-shadow: 2px 2px 4px #87CEEB;'>DESAFIO DA MATEMÁTICA</h1>", unsafe_allow_html=True)
-st.markdown("---")
-
-# Área de Entrada do Nome do Usuário
-if not st.session_state.name:
-    st.header("Modo de Dificuldade Extrema!")
-    
-    # Banner Principal com Gradiente e Cores Fortes
-    st.markdown("""
-    <div style='
-        padding: 20px; 
-        border-radius: 12px; 
-        background: linear-gradient(135deg, #FF4B4B 0%, #FFD700 100%);
-        text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.3);
-        color: white;
-    '>
-        <h2 style='color: white; margin: 0; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);'>🧠 ULTIMATE CHALLENGE ATIVADO 🚀</h2>
-        <p style='margin: 10px 0 0 0; font-size: 18px; font-weight: bold;'>
-            Prove ser o Mestre da Ordem de Operações.
-        </p>
-    </div>
-    """, unsafe_allow_html=True) 
-
-    with st.form(key='name_form'):
-        name_input = st.text_input("Qual é o seu nome, Gênio?", key="input_name_widget")
-        submit_button = st.form_submit_button("Começar o ULTIMATE CHALLENGE")
-        
-        if submit_button and name_input:
-            st.session_state.name = name_input.title().strip()
-            st.success(f"Impressionante coragem, {st.session_state.name}! Preparado para a Ordem de Operações?")
-            st.session_state.game_started = True
+    def display_dataframe(df, nome_deputado, col):
+        if df.empty:
+            col.info(f"Nenhuma despesa para {nome_deputado}.")
+            return
             
-            reset_game() 
-            
-        elif submit_button and not name_input:
-            st.warning("Por favor, digite seu nome para começar.")
-
-# --- Lógica do Jogo ---
-
-elif st.session_state.game_started and st.session_state.score < 10:
-    # Jogo em andamento
-
-    st.markdown("---")
-    st.markdown(f"### Mãos à obra, **{st.session_state.name}**! 🔢")
-    
-    get_progress_bar(st.session_state.score)
-    
-    st.warning("**LEMBRE-SE:** Priorize as operações dentro dos parênteses `()`. A dificuldade é exponencial!")
-    
-    # Métricas Destacadas
-    col1, col2 = st.columns(2)
-    col1.markdown(f"<div style='background-color: #E6E6FA; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold;'>SCORE: {st.session_state.score} 🥇</div>", unsafe_allow_html=True)
-    col2.markdown(f"<div style='background-color: #ADD8E6; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold;'>DIFICULDADE: {min(st.session_state.level_max_value, 10000)} ⚙️</div>", unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.markdown("<h4 style='text-align: center; color: #DC143C;'>🎯 O Desafio da Vez é...</h4>", unsafe_allow_html=True)
-    
-    if st.session_state.question:
-        question_text, _ = st.session_state.question
+        df_exibicao = df[['dataDocumento', 'tipoDespesa', 'nomeFornecedor', 'valorDocumento']].copy()
+        df_exibicao.rename(columns={
+            'dataDocumento': 'Data', 
+            'tipoDespesa': 'Tipo de Despesa', 
+            'nomeFornecedor': 'Fornecedor', 
+            'valorDocumento': 'Valor (R$)'
+        }, inplace=True)
         
-        # Pergunta em Destaque (Fundo)
-        st.markdown(f"""
-        <div style='
-            background-color: #FFFACD; 
-            padding: 25px; 
-            border-radius: 10px; 
-            text-align: center; 
-            border: 3px dashed #FFD700;
-        '>
-            <h1 style='margin: 0;'>**{question_text}** = ?</h1>
-        </div>
-        """, unsafe_allow_html=True) 
-
+        # Formatação final de moeda
+        df_exibicao['Valor (R$)'] = df_exibicao['Valor (R$)'].apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         
-        st.markdown("---")
-        
-        with st.form(key='quiz_form'):
-            answer_input = st.number_input(
-                "Sua Resposta (Inteiro):", 
-                min_value=-99999999, 
-                step=1, 
-                key="user_input", 
-                value=st.session_state.user_input, 
-                help="Digite sua resposta e clique em 'Enviar'."
-            )
-            submit_answer = st.form_submit_button("Enviar Resposta", on_click=check_answer)
-            
-    # Mensagem de Citação Histórica Colorida
-    st.markdown("---")
-    st.markdown(f"""
-    <div style='
-        padding: 10px; 
-        border-radius: 8px; 
-        background-color: #F0F8FF; 
-        color: #4682B4; 
-        font-weight: bold;
-        text-align: center;
-        font-style: italic;
-    '>
-        📜 CITAÇÃO: {st.session_state.current_tip}
-    </div>
-    """, unsafe_allow_html=True)
+        col.subheader(nome_deputado)
+        col.dataframe(df_exibicao, use_container_width=True)
 
-# --- Fim de Jogo (Vitória ou Derrota) ---
+    with col_tab1:
+        display_dataframe(df1, deputado_selecionado1['nome'], col_tab1)
 
-elif st.session_state.score == 10:
-    st.balloons()
-    st.success(f"## 🏆 CAMPEÃO INCONTESTÁVEL! {st.session_state.name}, você DOMINOU a Matemática!")
-    st.markdown("Você acertou **10 questões seguidas** e venceu o Desafio ULTIMATE!")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
+    with col_tab2:
+        display_dataframe(df2, deputado_selecionado2['nome'], col_tab2)
 
-elif st.session_state.name and st.session_state.last_attempt_correct == False:
-    st.error(f"## 💔 Falha Crítica, {st.session_state.name}.")
-    st.markdown(f"Você errou a última questão. Sua pontuação final foi de **{st.session_state.score} acertos**.")
-    st.markdown("A dificuldade com parênteses e números gigantes é extrema! Clique para tentar de novo.")
-    
-    if st.button("Tentar Novamente (Recomeçar)"):
-        reset_game()
-
-elif st.session_state.name and not st.session_state.game_started:
-    st.markdown("---")
-    st.markdown(f"### Olá, **{st.session_state.name}**!")
-    st.info("Clique abaixo para começar a provar seu valor.")
-    if st.button("Iniciar Desafio da Matemática"):
-        st.session_state.game_started = True
-        reset_game()
+# --- Execução do App ---
+if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Comparação de Deputados",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    comparar_deputados_ui()
