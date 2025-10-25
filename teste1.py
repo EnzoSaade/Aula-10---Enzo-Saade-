@@ -77,7 +77,7 @@ def calcular_total_despesas(despesas):
 def comparar_deputados_ui():
     
     st.title("⚖️ Comparação de Despesas entre Deputados Federais")
-    st.markdown("Insira os nomes de dois deputados para comparar os gastos com a Cota para Exercício da Atividade Parlamentar (CEAP).")
+    st.markdown("POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA!.")
     
     # --- 1. Seleção de Deputados ---
     col_dep1, col_dep2 = st.columns(2)
