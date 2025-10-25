@@ -4,24 +4,22 @@ import pandas as pd
 import locale
 from datetime import datetime
 
-# --- Configuração e Formatação ---
+# --- Configuração de Tema (Importante: O arquivo config.toml é necessário!) ---
 
 # Define a localização para formatação monetária (Brasil)
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except locale.Error:
-    pass # Ignora se não conseguir configurar (comum em alguns ambientes online)
+    pass
 
 def formatar_moeda(valor):
     """Formata um valor numérico para o padrão monetário BRL (R$)"""
     try:
-        # Tenta usar o locale
         return locale.currency(valor, grouping=True)
     except:
-        # Retorna formatação manual se o locale falhar
         return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# --- Funções de API ---
+# --- Funções de API (Mantidas) ---
 
 @st.cache_data(ttl=3600)
 def buscar_deputados(nome):
@@ -66,22 +64,23 @@ def calcular_total_despesas(despesas):
         return 0, pd.DataFrame()
     
     df = pd.DataFrame(despesas)
-    # Converte para numérico, tratando erros e NaN
     df['valorDocumento'] = pd.to_numeric(df['valorDocumento'], errors='coerce').fillna(0)
     total = df['valorDocumento'].sum()
     
     return total, df
 
-# --- Função Principal de Comparação ---
+# --- Função Principal de Comparação (Layout e Visualização) ---
 
 def comparar_deputados_ui():
     
-    st.title("⚖️ Comparação de Despesas entre Deputados Federais")
+    # Título com a bandeira
+    st.title("🇧🇷 Comparação de Despesas entre Deputados Federais")
     
-    # FRASE ALTERADA AQUI
-    st.markdown("POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA! ")
+    # Subtítulo (com a sua frase)
+    st.markdown("### POR UMA ATIVIDADE PARLAMENTAR MAIS TRANSPARENTE E REPUBLICANA! 🇧🇷")
     
     # --- 1. Seleção de Deputados ---
+    st.header("1. Selecione os Deputados")
     col_dep1, col_dep2 = st.columns(2)
     
     deputado_selecionado1 = None
@@ -115,17 +114,17 @@ def comparar_deputados_ui():
 
     # Verifica se a comparação pode prosseguir
     if not deputado_selecionado1 or not deputado_selecionado2:
-        st.warning("Aguardando a seleção de dois deputados.")
+        st.warning("Aguardando a seleção de dois deputados para prosseguir.")
         return
     
     if deputado_selecionado1['id'] == deputado_selecionado2['id']:
-        st.error("⚠️ Você selecionou o mesmo deputado duas vezes. Selecione dois diferentes.")
+        st.error("⚠️ Você selecionou o mesmo deputado. Por favor, escolha dois diferentes.")
         return
         
     st.markdown("---")
         
     # --- 2. Seleção do Período ---
-    st.subheader("🗓️ Período para Comparação")
+    st.header("2. Período para Comparação")
     
     ano_padrao = datetime.now().year
     anos_disponiveis = list(range(ano_padrao, ano_padrao - 5, -1))
@@ -155,24 +154,24 @@ def comparar_deputados_ui():
     total1, df1 = calcular_total_despesas(despesas1_raw)
     total2, df2 = calcular_total_despesas(despesas2_raw)
 
-    # --- 4. Exibição da Comparação ---
-    st.markdown("## 📊 Resultado")
+    # --- 4. Exibição da Comparação (Melhoria Visual) ---
+    st.header("3. Resultado e Análise")
     
     col_res1, col_res2 = st.columns(2)
     
-    # Total Deputado 1
+    # Total Deputado 1 - Usando st.success para o painel de resultados (destaque verde/amarelo)
     with col_res1:
-        st.info(f"👤 **{deputado_selecionado1['nome']}** ({deputado_selecionado1['siglaPartido']}/{deputado_selecionado1['siglaUf']})")
+        st.success(f"**{deputado_selecionado1['nome']}** ({deputado_selecionado1['siglaPartido']}/{deputado_selecionado1['siglaUf']})")
         st.metric("Total de Despesas", formatar_moeda(total1))
         st.caption(f"Registros: {len(df1)}")
 
     # Total Deputado 2
     with col_res2:
-        st.info(f"👤 **{deputado_selecionado2['nome']}** ({deputado_selecionado2['siglaPartido']}/{deputado_selecionado2['siglaUf']})")
+        st.success(f"**{deputado_selecionado2['nome']}** ({deputado_selecionado2['siglaPartido']}/{deputado_selecionado2['siglaUf']})")
         st.metric("Total de Despesas", formatar_moeda(total2))
         st.caption(f"Registros: {len(df2)}")
 
-    st.markdown("### Análise")
+    st.markdown("### Análise da Diferença")
     diferenca = abs(total1 - total2)
     
     if total1 > total2:
@@ -182,7 +181,7 @@ def comparar_deputados_ui():
         msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
         if total2 > 0:
              msg += f" (Representa **{percentual:.1f}%** a mais)."
-        st.success(f"📈 {msg}")
+        st.warning(f"⚠️ {msg}") # Aviso (Amarelo) para destacar a diferença
     elif total2 > total1:
         vencedor = deputado_selecionado2
         perdedor = deputado_selecionado1
@@ -190,7 +189,7 @@ def comparar_deputados_ui():
         msg = f"**{vencedor['nome']}** gastou **{formatar_moeda(diferenca)}** a mais que {perdedor['nome']}"
         if total1 > 0:
              msg += f" (Representa **{percentual:.1f}%** a mais)."
-        st.error(f"📉 {msg}")
+        st.warning(f"⚠️ {msg}") # Aviso (Amarelo) para destacar a diferença
     else:
         st.info("Ambos os deputados tiveram o mesmo total de despesas no período.")
 
@@ -212,7 +211,6 @@ def comparar_deputados_ui():
             'valorDocumento': 'Valor (R$)'
         }, inplace=True)
         
-        # Formatação final de moeda
         df_exibicao['Valor (R$)'] = df_exibicao['Valor (R$)'].apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         
         col.subheader(nome_deputado)
@@ -227,7 +225,7 @@ def comparar_deputados_ui():
 # --- Execução do App ---
 if __name__ == "__main__":
     st.set_page_config(
-        page_title="Comparação de Deputados",
+        page_title="Comparação de Deputados | Brasil",
         layout="wide",
         initial_sidebar_state="collapsed"
     )
